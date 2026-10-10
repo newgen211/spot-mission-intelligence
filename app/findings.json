@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-10T01:19:03",
+ "generated_at": "2026-10-10T15:31:45",
  "summary": {
   "missions": 27,
   "missions_completed": 26,
@@ -98,6 +98,43 @@
    "successes": 62,
    "failures": 6,
    "rate": 0.912
+  }
+ ],
+ "by_battery_and_config": [
+  {
+   "battery_band": "Under 30%",
+   "version": "V1",
+   "n": 37,
+   "successes": 18,
+   "rate": 0.486
+  },
+  {
+   "battery_band": "30 to 60%",
+   "version": "V1",
+   "n": 100,
+   "successes": 84,
+   "rate": 0.84
+  },
+  {
+   "battery_band": "30 to 60%",
+   "version": "V2",
+   "n": 7,
+   "successes": 7,
+   "rate": 1.0
+  },
+  {
+   "battery_band": "60% and up",
+   "version": "V1",
+   "n": 43,
+   "successes": 37,
+   "rate": 0.86
+  },
+  {
+   "battery_band": "60% and up",
+   "version": "V2",
+   "n": 83,
+   "successes": 75,
+   "rate": 0.904
   }
  ],
  "by_failure_type": [
@@ -785,7 +822,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M001 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-201); visual inspection at Cooling Loop (HX-208). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 82% to 15%. Next: check HX-208 at Cooling Loop (high visual defect)."
+   "brief": "Mission M001 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-201); visual inspection at Cooling Loop (HX-208). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 82% to 15%. Next: check HX-208 at Cooling Loop (high visual defect).",
+   "brief_ai": "Mission M001 was completed with 8 out of 10 actions succeeding. Two actions failed: one at Pipe Gallery due to obstacle detection, and another at Cooling Loop due to sensor timeout. There were two anomalies: a high visual defect on HX-208 and a low navigation obstruction on HX-201. The battery started at 82% and ended at 15%. Localization confidence on HX-201 was 44.4%, which is below normal. Next: check HX-208 at Cooling Loop (high visual defect).",
+   "brief_source": "model"
   },
   {
    "mission_id": "M002",
@@ -1078,7 +1117,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M002 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Turbine Hall South (PANEL-211). 1 anomaly recorded, 0 needing review. Battery went from 79% to 28%. Next: review why Turbine Hall South failed."
+   "brief": "Mission M002 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Turbine Hall South (PANEL-211). 1 anomaly recorded, 0 needing review. Battery went from 79% to 28%. Next: review why Turbine Hall South failed.",
+   "brief_source": "template"
   },
   {
    "mission_id": "M003",
@@ -1422,7 +1462,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M003 was marked completed. 7 of 10 actions succeeded. Failed: thermal inspection at Inspection Dock (HX-201); thermal inspection at Pipe Gallery (HX-204); gauge reading at Pump Bay (COMP-214). 2 anomalies recorded, 0 needing review. Battery went from 75% to 17%. Next: review why Inspection Dock failed."
+   "brief": "Mission M003 was marked completed. 7 of 10 actions succeeded. Failed: thermal inspection at Inspection Dock (HX-201); thermal inspection at Pipe Gallery (HX-204); gauge reading at Pump Bay (COMP-214). 2 anomalies recorded, 0 needing review. Battery went from 75% to 17%. Next: review why Inspection Dock failed.",
+   "brief_source": "template"
   },
   {
    "mission_id": "M004",
@@ -1780,7 +1821,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M004 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-204); gauge reading at Turbine Hall South (PANEL-211). 3 anomalies recorded, 1 needing review, 1 on an action that reported success. 1 reading fell outside the normal range for its type. Battery went from 81% to 27%. Next: check HX-217 at Compressor Area (high localization issue)."
+   "brief": "Mission M004 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-204); gauge reading at Turbine Hall South (PANEL-211). 3 anomalies recorded, 1 needing review, 1 on an action that reported success. 1 reading fell outside the normal range for its type. Battery went from 81% to 27%. Next: check HX-217 at Compressor Area (high localization issue).",
+   "brief_source": "template"
   },
   {
    "mission_id": "M005",
@@ -2059,7 +2101,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M005 was marked completed. All 10 actions succeeded. Battery went from 78% to 20%. Next: no action needed."
+   "brief": "Mission M005 was marked completed. All 10 actions succeeded. Battery went from 78% to 20%. Next: no action needed.",
+   "brief_ai": "Mission M005 was completed with all 10 actions succeeding. The battery started at 78% and ended at 20%. There were no anomalies or unusual readings. Next: no action needed.",
+   "brief_source": "model"
   },
   {
    "mission_id": "M006",
@@ -2402,7 +2446,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M006 was marked completed. 7 of 10 actions succeeded. Failed: acoustic inspection at Main Entrance (PANEL-215); visual inspection at Cooling Loop (HX-208); gauge reading at Turbine Hall South (PANEL-211). 3 anomalies recorded, 1 needing review. Battery went from 73% to 15%. Next: check PANEL-211 at Turbine Hall South (critical gauge out of range)."
+   "brief": "Mission M006 was marked completed. 7 of 10 actions succeeded. Failed: acoustic inspection at Main Entrance (PANEL-215); visual inspection at Cooling Loop (HX-208); gauge reading at Turbine Hall South (PANEL-211). 3 anomalies recorded, 1 needing review. Battery went from 73% to 15%. Next: check PANEL-211 at Turbine Hall South (critical gauge out of range).",
+   "brief_source": "template"
   },
   {
    "mission_id": "M007",
@@ -2748,7 +2793,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M007 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (PANEL-203); acoustic inspection at Pipe Gallery (PANEL-203). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 79% to 25%. Next: check PANEL-203 at Pipe Gallery (critical signal degradation)."
+   "brief": "Mission M007 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (PANEL-203); acoustic inspection at Pipe Gallery (PANEL-203). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 79% to 25%. Next: check PANEL-203 at Pipe Gallery (critical signal degradation).",
+   "brief_ai": "Mission M007 was completed with 8 out of 10 actions succeeding. Two actions failed: navigation of PANEL-203 at Pipe Gallery due to localization failure, and acoustic inspection of PANEL-203 at Pipe Gallery due to sensor timeout. Critical signal degradation on PANEL-203 at Pipe Gallery needs operator review. Localization confidence on PANEL-203 was 49.2%, below normal levels. Next: check PANEL-203 at Pipe Gallery (critical signal degradation).",
+   "brief_source": "model"
   },
   {
    "mission_id": "M008",
@@ -3028,7 +3075,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M008 was marked completed. 7 of 10 actions succeeded. Failed: acoustic inspection at Main Entrance (PANEL-215); thermal inspection at Electrical Room (PUMP-205); gauge reading at Pump Bay (COMP-214). 1 anomaly recorded, 0 needing review. Battery went from 75% to 12%. Next: review why Main Entrance failed."
+   "brief": "Mission M008 was marked completed. 7 of 10 actions succeeded. Failed: acoustic inspection at Main Entrance (PANEL-215); thermal inspection at Electrical Room (PUMP-205); gauge reading at Pump Bay (COMP-214). 1 anomaly recorded, 0 needing review. Battery went from 75% to 12%. Next: review why Main Entrance failed.",
+   "brief_source": "template"
   },
   {
    "mission_id": "M009",
@@ -3375,7 +3423,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M009 was marked completed. 7 of 10 actions succeeded. Failed: visual inspection at Pipe Gallery (HX-204); acoustic inspection at Turbine Hall South (PANEL-212); navigation at Electrical Room (PANEL-218). 1 anomaly recorded, 1 needing review, 1 on an action that reported success. 1 reading fell outside the normal range for its type. Battery went from 68% to 26%. Next: check HX-210 at Battery Room (high visual defect)."
+   "brief": "Mission M009 was marked completed. 7 of 10 actions succeeded. Failed: visual inspection at Pipe Gallery (HX-204); acoustic inspection at Turbine Hall South (PANEL-212); navigation at Electrical Room (PANEL-218). 1 anomaly recorded, 1 needing review, 1 on an action that reported success. 1 reading fell outside the normal range for its type. Battery went from 68% to 26%. Next: check HX-210 at Battery Room (high visual defect).",
+   "brief_ai": "Mission M009 was completed with 7 out of 10 actions succeeding. Three actions failed: a visual inspection of HX-204 at Pipe Gallery, an acoustic inspection of PANEL-212 at Turbine Hall South, and a navigation of PANEL-218 at Electrical Room. The battery started at 68% and ended at 26%. An unusual reading was noted on PANEL-218's localization confidence at 55.6% (normal is about 88.3%). A high visual defect on HX-210 at Battery Room was also recorded, needing operator review. Next: check HX-210 at Battery Room (high visual defect).",
+   "brief_source": "model"
   },
   {
    "mission_id": "M010",
@@ -3723,7 +3773,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M010 was marked completed. 7 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-202); acoustic inspection at Pump Bay (COMP-214); navigation at Cooling Loop (HX-208). 2 readings fell outside the normal range for its type. Battery went from 76% to 14%. Next: review why Pipe Gallery failed."
+   "brief": "Mission M010 was marked completed. 7 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-202); acoustic inspection at Pump Bay (COMP-214); navigation at Cooling Loop (HX-208). 2 readings fell outside the normal range for its type. Battery went from 76% to 14%. Next: review why Pipe Gallery failed.",
+   "brief_source": "template"
   },
   {
    "mission_id": "M011",
@@ -4003,7 +4054,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M011 was marked completed. 8 of 10 actions succeeded. Failed: gauge reading at Turbine Hall North (PANEL-212); acoustic inspection at Inspection Dock (PANEL-218). Battery went from 80% to 18%. Next: review why Turbine Hall North failed."
+   "brief": "Mission M011 was marked completed. 8 of 10 actions succeeded. Failed: gauge reading at Turbine Hall North (PANEL-212); acoustic inspection at Inspection Dock (PANEL-218). Battery went from 80% to 18%. Next: review why Turbine Hall North failed.",
+   "brief_source": "template"
   },
   {
    "mission_id": "M012",
@@ -4346,7 +4398,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M012 was marked completed. 7 of 10 actions succeeded. Failed: thermal inspection at Inspection Dock (PANEL-218); thermal inspection at Turbine Hall North (PANEL-215); thermal inspection at Electrical Room (GAUGE-209). 3 anomalies recorded, 0 needing review. Battery went from 69% to 13%. Next: review why Inspection Dock failed."
+   "brief": "Mission M012 was marked completed. 7 of 10 actions succeeded. Failed: thermal inspection at Inspection Dock (PANEL-218); thermal inspection at Turbine Hall North (PANEL-215); thermal inspection at Electrical Room (GAUGE-209). 3 anomalies recorded, 0 needing review. Battery went from 69% to 13%. Next: review why Inspection Dock failed.",
+   "brief_source": "model",
+   "brief_ai": "Mission M012 was completed with 7 out of 10 actions succeeding. Three actions failed: thermal inspections of PANEL-218, PANEL-215, and GAUGE-209 at different locations. The battery started at 69% and ended at 13%. Medium abnormal temperatures were recorded on PANEL-218 and PANEL-215 at Inspection Dock and Turbine Hall North, respectively, with no review needed. Next: review why Inspection Dock failed."
   },
   {
    "mission_id": "M013",
@@ -4680,7 +4734,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M013 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-201); thermal inspection at Pipe Gallery (HX-204). 1 anomaly recorded, 0 needing review. 1 reading fell outside the normal range for its type. Battery went from 72% to 23%. Next: review why Pipe Gallery failed."
+   "brief": "Mission M013 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-201); thermal inspection at Pipe Gallery (HX-204). 1 anomaly recorded, 0 needing review. 1 reading fell outside the normal range for its type. Battery went from 72% to 23%. Next: review why Pipe Gallery failed.",
+   "brief_source": "template"
   },
   {
    "mission_id": "M014",
@@ -5026,7 +5081,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M014 was marked completed. 7 of 10 actions succeeded. Failed: gauge reading at Turbine Hall South (PANEL-212); gauge reading at Compressor Area (HX-217); navigation at Compressor Area (HX-217). 2 anomalies recorded, 2 needing review. 1 reading fell outside the normal range for its type. Battery went from 68% to 22%. Next: check HX-217 at Compressor Area (high gauge out of range)."
+   "brief": "Mission M014 was marked completed. 7 of 10 actions succeeded. Failed: gauge reading at Turbine Hall South (PANEL-212); gauge reading at Compressor Area (HX-217); navigation at Compressor Area (HX-217). 2 anomalies recorded, 2 needing review. 1 reading fell outside the normal range for its type. Battery went from 68% to 22%. Next: check HX-217 at Compressor Area (high gauge out of range).",
+   "brief_ai": "Mission M014 was completed with 7 of 10 actions succeeding. Three actions failed: a gauge reading of PANEL-212 at Turbine Hall South had a sensor timeout, a gauge reading of HX-217 at Compressor Area had a sensor timeout, and navigation of HX-217 at Compressor Area had a localization failure. Two anomalies were recorded, both needing operator review: high gauges out of range on HX-217 and PANEL-212. Localization confidence on HX-217 was 48.8%, below normal. Next: check HX-217 at Compressor Area (high gauge out of range).",
+   "brief_source": "model"
   },
   {
    "mission_id": "M015",
@@ -5410,7 +5467,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M015 was marked completed. 7 of 10 actions succeeded. Failed: navigation at Pipe Gallery (PANEL-203); acoustic inspection at Pump Bay (COMP-214); acoustic inspection at Control Room Corridor (HX-213). 4 anomalies recorded, 1 needing review, 1 on an action that reported success. 2 readings fell outside the normal range for its type. Battery went from 77% to 27%. Next: check HX-213 at Control Room Corridor (high abnormal vibration)."
+   "brief": "Mission M015 was marked completed. 7 of 10 actions succeeded. Failed: navigation at Pipe Gallery (PANEL-203); acoustic inspection at Pump Bay (COMP-214); acoustic inspection at Control Room Corridor (HX-213). 4 anomalies recorded, 1 needing review, 1 on an action that reported success. 2 readings fell outside the normal range for its type. Battery went from 77% to 27%. Next: check HX-213 at Control Room Corridor (high abnormal vibration).",
+   "brief_source": "template"
   },
   {
    "mission_id": "M016",
@@ -5729,7 +5787,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M016 was marked completed. 7 of 10 actions succeeded. Failed: gauge reading at Battery Room (HX-210); visual inspection at Inspection Dock (HX-216); visual inspection at Turbine Hall South (PANEL-212). 1 anomaly recorded, 1 needing review. Battery went from 76% to 19%. Next: check PANEL-212 at Turbine Hall South (high visual defect)."
+   "brief": "Mission M016 was marked completed. 7 of 10 actions succeeded. Failed: gauge reading at Battery Room (HX-210); visual inspection at Inspection Dock (HX-216); visual inspection at Turbine Hall South (PANEL-212). 1 anomaly recorded, 1 needing review. Battery went from 76% to 19%. Next: check PANEL-212 at Turbine Hall South (high visual defect).",
+   "brief_ai": "Mission M016 was completed with 7 out of 10 actions succeeding. Three actions failed: a gauge reading of HX-210 at Battery Room was unreliable, a target was not detected at HX-216 at Inspection Dock, and a reading was unreliable at PANEL-212 at Turbine Hall South. A high visual defect on PANEL-212 at Turbine Hall South requires operator review. Battery levels dropped from 76% to 19%. Next: check PANEL-212 at Turbine Hall South (high visual defect).",
+   "brief_source": "model"
   },
   {
    "mission_id": "M017",
@@ -6036,7 +6096,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M017 was marked failed. 7 of 10 actions succeeded. Failed: visual inspection at Turbine Hall South (PANEL-211); gauge reading at Cooling Loop (HX-208); navigation at Turbine Hall South (PANEL-212). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 77% to 16%. Next: check PANEL-212 at Turbine Hall South (critical navigation obstruction)."
+   "brief": "Mission M017 was marked failed. 7 of 10 actions succeeded. Failed: visual inspection at Turbine Hall South (PANEL-211); gauge reading at Cooling Loop (HX-208); navigation at Turbine Hall South (PANEL-212). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 77% to 16%. Next: check PANEL-212 at Turbine Hall South (critical navigation obstruction).",
+   "brief_source": "template"
   },
   {
    "mission_id": "M018",
@@ -6328,7 +6389,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M018 was marked completed. All 10 actions succeeded. Battery went from 82% to 28%. Next: no action needed."
+   "brief": "Mission M018 was marked completed. All 10 actions succeeded. Battery went from 82% to 28%. Next: no action needed.",
+   "brief_ai": "Mission M018 was completed with all 10 actions succeeding. The battery started at 82% and ended at 28%. There were no anomalies or unusual readings. Next: no action needed.",
+   "brief_source": "model"
   },
   {
    "mission_id": "M019",
@@ -6568,7 +6631,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M019 was marked completed. All 10 actions succeeded. Battery went from 84% to 65%. Next: no action needed."
+   "brief": "Mission M019 was marked completed. All 10 actions succeeded. Battery went from 84% to 65%. Next: no action needed.",
+   "brief_ai": "Mission M019 was completed with all 10 actions succeeding. The battery started at 84% and ended at 65%. There were no anomalies or unusual readings. Next: no action needed.",
+   "brief_source": "model"
   },
   {
    "mission_id": "M020",
@@ -6914,7 +6979,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M020 was marked completed. 9 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-204). 3 anomalies recorded, 1 needing review, 2 on an action that reported success. 2 readings fell outside the normal range for its type. Battery went from 86% to 70%. Next: check HX-204 at Control Room Corridor (critical abnormal temperature)."
+   "brief": "Mission M020 was marked completed. 9 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-204). 3 anomalies recorded, 1 needing review, 2 on an action that reported success. 2 readings fell outside the normal range for its type. Battery went from 86% to 70%. Next: check HX-204 at Control Room Corridor (critical abnormal temperature).",
+   "brief_source": "template"
   },
   {
    "mission_id": "M021",
@@ -7222,7 +7288,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M021 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Inspection Dock (VALVE-207). 1 reading fell outside the normal range for its type. Battery went from 98% to 65%. Next: review why Inspection Dock failed."
+   "brief": "Mission M021 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Inspection Dock (VALVE-207). 1 reading fell outside the normal range for its type. Battery went from 98% to 65%. Next: review why Inspection Dock failed.",
+   "brief_source": "template"
   },
   {
    "mission_id": "M022",
@@ -7515,7 +7582,8 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M022 was marked completed. 9 of 10 actions succeeded. Failed: navigation at Heat Exchanger Area (PANEL-218). 1 anomaly recorded, 1 needing review. Battery went from 86% to 68%. Next: check PANEL-218 at Heat Exchanger Area (high signal degradation)."
+   "brief": "Mission M022 was marked completed. 9 of 10 actions succeeded. Failed: navigation at Heat Exchanger Area (PANEL-218). 1 anomaly recorded, 1 needing review. Battery went from 86% to 68%. Next: check PANEL-218 at Heat Exchanger Area (high signal degradation).",
+   "brief_source": "template"
   },
   {
    "mission_id": "M023",
@@ -7755,7 +7823,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M023 was marked completed. All 10 actions succeeded. Battery went from 94% to 52%. Next: no action needed."
+   "brief": "Mission M023 was marked completed. All 10 actions succeeded. Battery went from 94% to 52%. Next: no action needed.",
+   "brief_ai": "Mission M023 was completed with all 10 actions succeeding. The battery started at 94% and ended at 52%. There were no anomalies or unusual readings. Next: no action needed.",
+   "brief_source": "model"
   },
   {
    "mission_id": "M024",
@@ -8114,7 +8184,9 @@
      "flagged": true
     }
    ],
-   "brief": "Mission M024 was marked completed. 8 of 10 actions succeeded. Failed: acoustic inspection at Valve Station (PUMP-205); navigation at Main Entrance (PANEL-215). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 94% to 54%. Next: check PUMP-205 at Valve Station (high abnormal vibration)."
+   "brief": "Mission M024 was marked completed. 8 of 10 actions succeeded. Failed: acoustic inspection at Valve Station (PUMP-205); navigation at Main Entrance (PANEL-215). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 94% to 54%. Next: check PUMP-205 at Valve Station (high abnormal vibration).",
+   "brief_source": "model",
+   "brief_ai": "Mission M024 was completed with 8 out of 10 actions succeeding. Two actions failed: an acoustic inspection of PUMP-205 at Valve Station had a sensor timeout, and navigation of PANEL-215 at Main Entrance encountered an obstacle. There were two anomalies: high abnormal vibration on PUMP-205 and a medium localization issue on PANEL-215. The vibration needs operator review, while the localization issue does not require review. The battery went from 94% to 54%. Localization confidence on PANEL-215 was 49.2%, which is below normal levels. Next: check PUMP-205 at Valve Station (high abnormal vibration)."
   },
   {
    "mission_id": "M025",
@@ -8470,7 +8542,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M025 was marked completed. 8 of 10 actions succeeded. Failed: acoustic inspection at Battery Room (HX-210); gauge reading at Control Room Corridor (HX-208). 3 anomalies recorded, 1 needing review, 1 on an action that reported success. Battery went from 93% to 72%. Next: check HX-210 at Battery Room (high abnormal vibration)."
+   "brief": "Mission M025 was marked completed. 8 of 10 actions succeeded. Failed: acoustic inspection at Battery Room (HX-210); gauge reading at Control Room Corridor (HX-208). 3 anomalies recorded, 1 needing review, 1 on an action that reported success. Battery went from 93% to 72%. Next: check HX-210 at Battery Room (high abnormal vibration).",
+   "brief_source": "model",
+   "brief_ai": "Mission M025 was completed with 8 actions out of 10. Two actions failed: an acoustic inspection at Battery Room had a signal noise issue, and a gauge reading at Control Room Corridor had a sensor timeout. An anomaly of high abnormal vibration on HX-210 at Battery Room requires operator review. Next: check HX-210 at Battery Room (high abnormal vibration)."
   },
   {
    "mission_id": "M026",
@@ -8775,7 +8849,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M026 was marked completed. All 10 actions succeeded. 1 anomaly recorded, 0 needing review, 1 on an action that reported success. Battery went from 82% to 52%. Next: no action needed."
+   "brief": "Mission M026 was marked completed. All 10 actions succeeded. 1 anomaly recorded, 0 needing review, 1 on an action that reported success. Battery went from 82% to 52%. Next: no action needed.",
+   "brief_ai": "Mission M026 was completed with all 10 actions succeeding. The battery started at 82% and ended at 52%. There was one anomaly recorded, but it does not require operator review. Next: no action needed.",
+   "brief_source": "model"
   },
   {
    "mission_id": "M027",
@@ -9067,7 +9143,9 @@
      "flagged": false
     }
    ],
-   "brief": "Mission M027 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Electrical Room (HX-202). 2 anomalies recorded, 1 needing review, 1 on an action that reported success. Battery went from 92% to 61%. Next: check HX-202 at Electrical Room (high abnormal vibration)."
+   "brief": "Mission M027 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Electrical Room (HX-202). 2 anomalies recorded, 1 needing review, 1 on an action that reported success. Battery went from 92% to 61%. Next: check HX-202 at Electrical Room (high abnormal vibration).",
+   "brief_source": "model",
+   "brief_ai": "Mission M027 was completed with 9 out of 10 actions succeeding. One action failed at Electrical Room due to an unreliable reading, with battery dropping from 92% to 61%. An anomaly of high abnormal vibration on HX-202 at Electrical Room requires operator review. An action on HX-219 at Warehouse Corridor had a medium signal degradation without needing review. Next: check HX-202 at Electrical Room (high abnormal vibration)."
   }
  ],
  "replay_events": [
@@ -16732,5 +16810,10 @@
   "The supplied replay.ndjson stops at event E00500, partway through M023: missions M023 to M027 never finish in it. Our replay is rebuilt from the CSVs and covers all 27.",
   "Reading quality is QUESTIONABLE exactly when the action failed (42 of 42), so quality adds no signal beyond the action status.",
   "Anomaly severity decides review: every HIGH and CRITICAL anomaly needs review, no LOW or MEDIUM one does."
- ]
+ ],
+ "brief_model": {
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "missions_using_model": 14,
+  "rules": "Only facts given; every number must appear in the facts; no guessed causes; the Next step is added by code, not the model. Otherwise the template brief is shown."
+ }
 }

@@ -166,6 +166,9 @@ out = {
     "by_config_version": rate_table(a, "configuration_version"),
     "by_battery_bucket": rate_table(a, "battery_bucket"),
     "by_action_type": rate_table(a, "action_type"),
+    "by_battery_and_config": (lambda g: g.assign(rate=(g.successes / g.n).round(3)).to_dict("records"))(
+        a.groupby(["battery_bucket", "configuration_version"], observed=True).agg(n=("ok", "size"), successes=("ok", "sum")).reset_index()
+         .rename(columns={"battery_bucket": "battery_band", "configuration_version": "version"}).astype({"battery_band": str})),
     "by_failure_type": a[~a.ok].failure_type.value_counts().rename_axis("group").reset_index(name="n").to_dict("records"),
     "by_location": rate_table(a, "location_id", loc.set_index("location_id")[["location_name", "zone_type", "environment", "x_coord", "y_coord"]]),
     "locations": loc.drop(columns="synthetic").to_dict("records"),
