@@ -159,8 +159,9 @@ out = {
     },
     "headline_findings": [
         f"{int(mc.sum())} of {len(m)} missions say completed, but {comp_with_fail} of those had at least one failed action inside.",
-        f"After the configuration change (V1 to V2), action success rose from {v['V1']:.0%} to {v['V2']:.0%}.",
-        "DRAFT: third finding comes from step two (battery, action type, or location).",
+        "Battery is the strongest driver of failure: below 30% battery only 49% of actions succeed (27% below 20%), versus 87% above 30%.",
+        "V2 looks better (77% to 91% success) mainly because it halved battery drain per mission (56 to 28 points) and never ran below 30%. At the same battery level V1 and V2 perform about the same (86% vs 90%).",
+        "8 anomalies sit on actions that reported success, 3 of them needing review, including a CRITICAL abnormal temperature on HX-204 in mission M020.",
     ],
     "by_config_version": rate_table(a, "configuration_version"),
     "by_battery_bucket": rate_table(a, "battery_bucket"),
@@ -186,6 +187,9 @@ out = {
         "Normal ranges are per measurement type, not per asset: each asset has only about 2 readings per type.",
         "In the replay stream an action's start and result share one timestamp, so action duration comes from actions.csv, not the stream.",
         "The one FAILED mission (M017) still ends with a MISSION_COMPLETED event whose status is FAILED.",
+        "The supplied replay.ndjson stops at event E00500, partway through M023: missions M023 to M027 never finish in it. Our replay is rebuilt from the CSVs and covers all 27.",
+        "Reading quality is QUESTIONABLE exactly when the action failed (42 of 42), so quality adds no signal beyond the action status.",
+        "Anomaly severity decides review: every HIGH and CRITICAL anomaly needs review, no LOW or MEDIUM one does.",
     ],
 }
 
