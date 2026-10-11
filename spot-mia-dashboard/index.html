@@ -17,60 +17,27 @@
       </div>
     </div>
     <nav class="sp-nav" aria-label="Dashboard views">
-      <button data-view="overview" aria-pressed="true">Overview</button>
-      <button data-view="control" aria-pressed="false">Mission control</button>
+      <button data-view="control" aria-pressed="true">Live replay</button>
+      <button data-view="overview" aria-pressed="false">Overview</button>
       <button data-view="results" aria-pressed="false">What needs attention</button>
-      <button data-view="trends" aria-pressed="false">Is it getting better?</button>
       <button id="sp-theme" class="sp-theme" aria-label="Toggle light or dark theme" title="Light / dark">Dark mode</button>
     </nav>
   </header>
 
   <main class="sp-main">
     <div class="sp-title">
-      <div>
-        <h1 id="sp-page-title">Spot, at a glance</h1>
-        <p class="sp-muted" id="sp-page-sub">What the robot reported, and what it missed.</p>
+      <div class="sp-title-l">
+        <h1 id="sp-page-title">Live replay</h1>
+        <span class="sp-muted sp-small" id="sp-page-sub">Watch a mission run, then read what the robot did not say.</span>
       </div>
       <span class="sp-badge">Synthetic challenge data · Sep 1–10, 2026</span>
     </div>
 
-    <!-- ============ OVERVIEW ============ -->
-    <section data-screen="overview" class="sp-stack">
-      <section class="sp-panel sp-hero">
-        <p class="sp-kicker">The one thing to know</p>
-        <h2 class="sp-hero-h" id="sp-hero-line"></h2>
-        <p class="sp-muted" id="sp-hero-sub"></p>
-        <div class="sp-actions" style="margin-top:14px">
-          <button class="sp-primary" id="sp-start-tour">▶ Replay mission M014</button>
-          <button data-view="trends">See why it happens</button>
-        </div>
-      </section>
-
-      <section class="sp-panel">
-        <div class="sp-head">
-          <div><h2>Overview</h2><p class="sp-muted">What did Spot complete during this period?</p></div>
-        </div>
-        <div class="sp-stats" id="sp-stats"></div>
-      </section>
-
-      <section class="sp-panel">
-        <div class="sp-head">
-          <div><h2>All 27 missions, in order</h2><p class="sp-muted">Bar height is actions succeeded out of 10. Red marks need review. Click a bar to replay it.</p></div>
-          <div class="sp-legend"><span><i style="background:var(--sp-v1)"></i>V1</span><span><i style="background:var(--sp-v2)"></i>V2</span><span><i style="background:var(--sp-bad)"></i>Needs review</span></div>
-        </div>
-        <div class="sp-timeline-wrap"><svg class="sp-chart sp-timeline" id="sp-timeline" viewBox="0 0 1200 190" role="img" aria-label="Timeline of all missions"></svg></div>
-      </section>
-
-      <section class="sp-panel">
-        <div class="sp-head"><div><h2>What we found</h2><p class="sp-muted">Four findings, each with its number. Every one is on the Trends tab.</p></div></div>
-        <div class="sp-findings" id="sp-findings"></div>
-      </section>
-    </section>
-
     <!-- ============ MISSION CONTROL ============ -->
-    <section data-screen="control" hidden class="sp-stack">
-      <div class="sp-control">
-        <aside class="sp-panel sp-queue-panel">
+    <section data-screen="control" class="sp-stack">
+      <div class="sp-insight"><span class="sp-insight-k">Insight</span><span id="sp-live-line"></span><button data-view="overview" class="sp-mini">Overview</button></div>
+      <div class="sp-control" id="sp-control">
+        <aside class="sp-panel sp-queue-panel" hidden>
           <div class="sp-head"><h2>Missions</h2><span class="sp-badge" id="sp-queue-count"></span></div>
           <div class="sp-actions sp-filters" id="sp-queue-filters">
             <button data-qf="all" aria-pressed="true">All</button>
@@ -84,8 +51,13 @@
         <div class="sp-stack sp-center">
           <section class="sp-panel">
             <div class="sp-head">
-              <div><h2 id="sp-map-title">Facility map</h2><p class="sp-muted" id="sp-map-caption"></p></div>
-              <span class="sp-badge" id="sp-map-badge"></span>
+              <div class="sp-picker">
+                <button id="sp-prev" aria-label="Previous mission">‹</button>
+                <select id="sp-mission-select" aria-label="Choose a mission"></select>
+                <button id="sp-next" aria-label="Next mission">›</button>
+                <span class="sp-muted sp-small" id="sp-map-caption"></span>
+              </div>
+              <div class="sp-actions"><span class="sp-badge" id="sp-map-badge"></span><button class="sp-mini" id="sp-browse" aria-pressed="false">Browse all missions</button></div>
             </div>
             <div class="sp-floor-viewport">
               <img class="sp-floor-image" src="fictional_floor_plan.png" alt="Fictional industrial floor plan. Floor 1 contains WP01 through WP10; Floor 2 contains WP11 through WP15." width="1095" height="595">
@@ -97,7 +69,7 @@
               <span><i class="sp-map-dot" data-state="missed"></i>Action failed</span>
               <span><i class="sp-map-dot" data-state="review"></i>Needs review</span>
               <span><i class="sp-map-dot"></i>Not reached yet</span>
-              <span class="sp-muted">Numbers are action order · hover a pin for details · click to jump</span>
+              <span class="sp-muted sp-hint">Hover a pin for details, click to jump</span>
             </div>
             <div class="sp-transport">
               <button class="sp-primary" id="sp-play">Play</button>
@@ -140,35 +112,41 @@
       </div>
     </section>
 
-    <!-- ============ RESULTS ============ -->
-    <section data-screen="results" hidden class="sp-stack">
+    <!-- ============ OVERVIEW ============ -->
+    <section data-screen="overview" hidden class="sp-stack">
+      <div class="sp-kpis" id="sp-kpis"></div>
+
       <section class="sp-panel">
         <div class="sp-head">
-          <div><h2>Inspection results</h2><p class="sp-muted" id="sp-results-scope">All 27 missions</p></div>
-          <button id="sp-all-results">All missions</button>
+          <div><h2>All 27 missions, in order</h2><p class="sp-muted sp-small">Height = actions succeeded of 10 · red mark = needs review · click to replay</p></div>
+          <div class="sp-legend"><span><i style="background:var(--sp-v1)"></i>V1</span><span><i style="background:var(--sp-v2)"></i>V2</span><span><i style="background:var(--sp-bad)"></i>Needs review</span></div>
         </div>
-        <div class="sp-actions" id="sp-result-filters">
-          <button data-filter="review" aria-pressed="true">Needs review</button>
-          <button data-filter="hidden" aria-pressed="false">Hidden behind a success</button>
-          <button data-filter="failed" aria-pressed="false">Missed steps</button>
-          <button data-filter="readings" aria-pressed="false">Flagged readings</button>
-          <button data-filter="assets" aria-pressed="false">Repeat offenders</button>
-        </div>
-        <div id="sp-result-content" class="sp-table-wrap" aria-live="polite"></div>
+        <div class="sp-timeline-wrap"><svg class="sp-chart sp-timeline" id="sp-timeline" viewBox="0 0 1200 190" role="img" aria-label="Timeline of all missions"></svg></div>
       </section>
-    </section>
 
-    <!-- ============ TRENDS ============ -->
-    <section data-screen="trends" hidden class="sp-stack">
       <div class="sp-trends">
-        <section class="sp-panel sp-wide"><div class="sp-head"><h2>Completed is not the same as inspected</h2></div><p class="sp-muted sp-small">All 27 missions by what the robot reported and what actually happened inside.</p><svg class="sp-chart" id="ch-head" viewBox="0 0 1000 120"></svg></section>
-        <section class="sp-panel"><div class="sp-head"><h2>1 · The battery cliff</h2></div><p class="sp-muted sp-small">Share of actions that succeeded, by battery level when the action ran.</p><svg class="sp-chart" id="ch-cliff" viewBox="0 0 520 270"></svg></section>
-        <section class="sp-panel"><div class="sp-head"><h2>2 · Low battery breaks sensors, not walking</h2><button class="sp-mini" id="sp-heat-toggle" aria-pressed="false">Show by failure type</button></div><p class="sp-muted sp-small">Failure rate per 100 actions in each battery band. Sensor failures climb as battery drops; navigation failures do not.</p><div class="sp-table-wrap"><table class="sp-heat" id="sp-heat"></table></div></section>
-        <section class="sp-panel"><div class="sp-head"><h2>3 · Did V2 fix it? Not at the same battery</h2></div><p class="sp-muted sp-small">Overall V2 looks 14 points better. Compared at the same battery level the gap shrinks to a few points.</p><div class="sp-legend"><span><i style="background:var(--sp-v1)"></i>V1</span><span><i style="background:var(--sp-v2)"></i>V2</span></div><svg class="sp-chart" id="ch-vs" viewBox="0 0 520 250"></svg></section>
-        <section class="sp-panel"><div class="sp-head"><h2>4 · What V2 did change: it keeps the robot charged</h2></div><p class="sp-muted sp-small">Every mission's battery from start to end. V2 starts higher, drains less, and never enters the danger zone.</p><div class="sp-legend"><span><i style="background:var(--sp-v1)"></i>V1 missions</span><span><i style="background:var(--sp-v2)"></i>V2 missions</span></div><svg class="sp-chart" id="ch-drain" viewBox="0 0 520 270"></svg></section>
-        <section class="sp-panel"><div class="sp-head"><h2>5 · Where Spot stumbles</h2></div><p class="sp-muted sp-small">Waypoints ranked by how often an action fails there.</p><svg class="sp-chart" id="ch-loc" viewBox="0 0 520 330"></svg></section>
+        <section class="sp-panel"><div class="sp-head"><h2>1 · The battery cliff</h2></div><p class="sp-muted sp-small" id="ch-cliff-sub">Action success rate by battery at time of action</p><svg class="sp-chart" id="ch-cliff" viewBox="0 0 520 270"></svg></section>
+        <section class="sp-panel"><div class="sp-head"><h2>2 · Low battery breaks sensors, not walking</h2><button class="sp-mini" id="sp-heat-toggle" aria-pressed="false">Show by failure type</button></div><p class="sp-muted sp-small">Failures per 100 actions, by band</p><div class="sp-table-wrap"><table class="sp-heat" id="sp-heat"></table></div></section>
+        <section class="sp-panel"><div class="sp-head"><h2>3 · Did V2 fix it? Not at the same battery</h2></div><p class="sp-muted sp-small">Action success rate, V1 vs V2, at matched battery</p><div class="sp-legend"><span><i style="background:var(--sp-v1)"></i>V1</span><span><i style="background:var(--sp-v2)"></i>V2</span></div><svg class="sp-chart" id="ch-vs" viewBox="0 0 520 250"></svg></section>
+        <section class="sp-panel"><div class="sp-head"><h2>4 · What V2 did change: it keeps the robot charged</h2></div><p class="sp-muted sp-small">Battery start → end, one line per mission</p><div class="sp-legend"><span><i style="background:var(--sp-v1)"></i>V1 missions</span><span><i style="background:var(--sp-v2)"></i>V2 missions</span></div><svg class="sp-chart" id="ch-drain" viewBox="0 0 520 270"></svg></section>
+        <section class="sp-panel"><div class="sp-head"><h2>5 · Where Spot stumbles</h2></div><p class="sp-muted sp-small">Action failure rate by waypoint</p><svg class="sp-chart" id="ch-loc" viewBox="0 0 520 330"></svg></section>
         <section class="sp-panel"><div class="sp-head"><h2>6 · Least reliable actions</h2></div><svg class="sp-chart" id="ch-type" viewBox="0 0 520 210"></svg></section>
       </div>
+    </section>
+
+    <!-- ============ RESULTS ============ -->
+    <section data-screen="results" hidden class="sp-stack">
+      <div class="sp-rfilters" id="sp-result-filters"></div>
+      <section class="sp-panel">
+        <div class="sp-head">
+          <div><h2 id="sp-results-title">Needs review</h2> <span class="sp-muted sp-small" id="sp-results-scope">All 27 missions</span></div>
+          <div class="sp-actions">
+            <input type="search" id="sp-result-search" class="sp-search" placeholder="Filter by asset or place" aria-label="Filter by asset or place">
+            <button id="sp-all-results" class="sp-mini" hidden>Show all missions</button>
+          </div>
+        </div>
+        <div id="sp-result-content" aria-live="polite"></div>
+      </section>
     </section>
 
     <footer class="sp-footer">All data is synthetic challenge data. Location means where the action ran. V2 ran entirely after V1, so V1 vs V2 is a before and after, not a side-by-side test.</footer>

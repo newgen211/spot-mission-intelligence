@@ -1,4 +1,4 @@
-// Spot-MIA dashboard: navigation, mission replay on the floor plan, report, results, and trends.
+// Spot-MIA dashboard: navigation, mission replay on the floor plan, report, results, and overview charts.
 // Reads only window.SPOT_SAMPLE_DATA (sample-data.js). No numbers are computed from anywhere else.
 (() => {
     const root = document.getElementById('spot-click-through');
@@ -19,12 +19,12 @@
     const reviewCount = m => m.anoms.filter(a => a.rev).length;
 
     /* ---------------- Navigation ---------------- */
-    const TITLES = { overview: ['Spot, at a glance', 'What the robot reported, and what it missed.'], control: ['Mission control', 'Replay any mission on the floor plan, then read the report.'], results: ['What needs attention?', 'Everything an operator should look at, across all missions.'], trends: ['Is it getting better?', 'Why missions fail, and what changed between V1 and V2.'] };
+    const TITLES = { overview: ['Overview', 'What the robot reported, what it missed, and what changed between V1 and V2.'], control: ['Live replay', 'Watch a mission run, then read what the robot did not say.'], results: ['What needs attention?', 'Everything an operator should look at, across all missions.'] };
     function view(name) {
         qa('[data-screen]').forEach(el => el.hidden = el.dataset.screen !== name);
         qa('.sp-nav [data-view]').forEach(el => el.setAttribute('aria-pressed', String(el.dataset.view === name)));
         q('#sp-page-title').textContent = TITLES[name][0]; q('#sp-page-sub').textContent = TITLES[name][1];
-        if (name === 'trends') drawTrends();
+        if (name === 'overview') drawTrends();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     qa('[data-view]').forEach(b => b.onclick = () => view(b.dataset.view));
@@ -36,28 +36,23 @@
     applyTheme();
 
     /* ---------------- Overview ---------------- */
-    q('#sp-hero-line').textContent = `${S.missions_completed} of ${S.missions} missions say completed. ${S.completed_missions_with_failures} of them had a failed inspection inside.`;
-    q('#sp-hero-sub').textContent = `Overall, ${pct(S.action_success_rate)} of actions succeeded. The biggest reason they fail is battery: below 30%, success drops to about half.`;
-    const stats = [
-        [`${S.missions_completed} / ${S.missions}`, 'Missions completed', 'A finished route can still miss readings.', 'control'],
-        [`${S.actions_ok} / ${S.actions}`, 'Inspection steps successful', `${S.actions - S.actions_ok} steps were unsuccessful.`, 'results', 'failed'],
-        [String(S.anomalies_review_required), 'Anomalies needing review', `of ${S.anomalies} anomaly flags recorded.`, 'results', 'review'],
-        [String(S.anomalies_on_successful_actions), 'Hidden behind a success', 'Anomalies on steps the robot reported as fine.', 'results', 'hidden'],
-    ];
-    q('#sp-stats').innerHTML = stats.map(([v, l, s, go, f]) => `<button class="sp-stat" data-go="${go}" ${f ? `data-filter="${f}"` : ''}><span class="sp-value">${esc(v)}</span><span>${esc(l)}</span><span class="sp-small">${esc(s)}</span></button>`).join('');
+    q('#sp-live-line').textContent = `${S.missions_completed} of ${S.missions} missions say completed. ${S.completed_missions_with_failures} of them had a failed inspection inside.`;
+
     const acts = MS.flatMap(m => m.acts.map(a => ({ ...a, v: m.v, mid: m.id })));
     const rate = rs => rs.length ? rs.filter(a => a.ok).length / rs.length : 0;
     const low = acts.filter(a => a.bat < 30), high = acts.filter(a => a.bat >= 30);
     const drain = v => { const ms = MS.filter(m => m.v === v); return Math.round(ms.reduce((s, m) => s + m.b0 - m.b1, 0) / ms.length); };
-    const findings = [
-        [`${S.completed_missions_with_failures} of ${S.missions_completed}`, 'completed missions had a failed action inside. Mission status is a receipt, not an inspection.'],
-        [pct(rate(low)), `of actions succeed under 30% battery, against ${pct(rate(high))} above it. Battery is the biggest driver of failure.`],
-        [`${drain('V1')} → ${drain('V2')} pts`, 'battery used per mission, V1 to V2. At the same battery level the two versions perform about the same.'],
-        [String(S.anomalies_on_successful_actions), 'anomalies sit on actions that reported success, including a critical abnormal temperature.'],
-    ];
-    q('#sp-findings').innerHTML = findings.map(([b, p]) => `<div class="sp-finding"><b class="sp-num">${esc(b)}</b><p>${esc(p)}</p></div>`).join('');
+    {
+        const k = [
+            ['ok', 'Missions completed', `${S.missions_completed}<small>/${S.missions}</small>`, `${S.completed_missions_with_failures} had failures inside`, 'control'],
+            ['warn', 'Actions succeeded', `${pct(S.action_success_rate)}`, `${S.actions_ok} of ${S.actions}`, 'results', 'failed'],
+            ['bad', 'Needs review', `${S.anomalies_review_required}`, `of ${S.anomalies} anomalies`, 'results', 'review'],
+            ['bad', 'Hidden by success', `${S.anomalies_on_successful_actions}`, 'anomalies on OK actions', 'results', 'hidden'],
+        ];
+        q('#sp-kpis').innerHTML = k.map(([c, l, v, sub, go, f]) => `<button class="sp-kpi ${c}" data-go="${go}" ${f ? `data-filter="${f}"` : ''}><span class="l">${l}</span><span class="v">${v}</span><span class="s">${sub}</span></button>`).join('');
+    }
+    q('#ch-cliff-sub').textContent = `Action success rate by battery at time of action · ${pct(rate(low))} succeed under 30%, ${pct(rate(high))} above`;
     qa('[data-go]').forEach(b => b.onclick = () => { if (b.dataset.filter) { filter = b.dataset.filter; scope = null; renderResults(); } view(b.dataset.go); });
-    q('#sp-start-tour').onclick = () => { view('control'); load('M014'); setTimeout(() => { if (!playing) play(); }, 350); };
     const DEMO = { M014: 'Start here', M020: 'Critical, hidden' };
     const V2_FIRST = MS.find(m => m.v === 'V2').id;
     const avgDrain = { V1: drain('V1'), V2: drain('V2') };
@@ -84,7 +79,7 @@
     function renderQueue() {
         const list = MS.filter(m => qf === 'all' || (qf === 'review' ? reviewCount(m) > 0 : m.v === qf)).slice().reverse();
         q('#sp-queue-count').textContent = `${list.length} shown`;
-        q('#sp-mission-list').innerHTML = list.map((m, i) => { const n = reviewCount(m); const divider = (qf === 'all' || qf === 'review') && m.v === 'V1' && list[i - 1]?.v === 'V2' ? `<div class="sp-divider">Configuration V2 begins above · Sep 7</div>` : ''; return divider + `<button class="sp-mission" data-mission="${m.id}" aria-current="${m.id === cur?.id}"><span><span class="sp-mono">${m.id}</span> <span class="sp-small sp-muted">${when(m.start)}</span>${DEMO[m.id] ? ` <span class="sp-tag start">${DEMO[m.id]}</span>` : ''}</span><span class="sp-pill ${m.v.toLowerCase()}">${m.v}</span><span class="sp-small ${n ? 'sp-bad' : 'sp-muted'}" style="grid-column:1/-1">${m.acts.filter(a => a.ok).length}/10 succeeded${n ? ` · ${n} need${n === 1 ? 's' : ''} review` : ''}${m.status === 'FAILED' ? ' · robot said FAILED' : ''}</span><span class="sp-strip" aria-hidden="true">${m.acts.map(a => `<i class="${a.ok ? '' : 'f'}"></i>`).join('')}</span></button>`; }).join('');
+        q('#sp-mission-list').innerHTML = list.map((m, i) => { const n = reviewCount(m); const divider = (qf === 'all' || qf === 'review') && m.v === 'V1' && list[i - 1]?.v === 'V2' ? `<div class="sp-divider">Configuration V2 begins above · Sep 7</div>` : ''; return divider + `<button class="sp-mission" data-mission="${m.id}" aria-current="${m.id === cur?.id}"><span><span class="sp-mono">${m.id}</span> <span class="sp-small sp-muted">${when(m.start)}</span>${DEMO[m.id] ? ` <span class="sp-tag start">${DEMO[m.id]}</span>` : ''}</span><span class="sp-pill ${m.v.toLowerCase()}">${m.v}</span><span class="sp-small ${n ? 'sp-bad' : 'sp-muted'}" style="grid-column:1/-1">${m.acts.filter(a => a.ok).length}/10${n ? ` · ${n} to review` : ''}${m.status === 'FAILED' ? ' · FAILED' : ''}</span><span class="sp-strip" aria-hidden="true">${m.acts.map(a => `<i class="${a.ok ? '' : 'f'}"></i>`).join('')}</span></button>`; }).join('');
         qa('[data-mission]').forEach(b => b.onclick = () => load(b.dataset.mission, true));
     }
 
@@ -110,7 +105,7 @@
         cancelAnimationFrame(raf); playing = false;
         cur = MS.find(m => m.id === id); P = stopPositions(cur);
         qa('[data-mission]').forEach(b => b.setAttribute('aria-current', String(b.dataset.mission === id)));
-        q('#sp-map-title').textContent = `Facility map · ${id}`;
+        q('#sp-mission-select').value = id;
         q('#sp-map-caption').textContent = `${when(cur.start)} · ${cur.dur} min · ${new Set(cur.acts.map(a => a.loc)).size} waypoints`;
         q('#sp-map-badge').textContent = `Config ${cur.v}`;
         const d = 'M' + P.map(p => `${p.px},${p.py}`).join(' L');
@@ -271,46 +266,67 @@
     }
 
     /* ---------------- Results ---------------- */
-    let filter = 'review', scope = null;
-    function renderResults() {
-        qa('#sp-result-filters button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
-        q('#sp-results-scope').textContent = scope ? `Mission ${scope}` : `All ${MS.length} missions`;
-        const ms = scope ? MS.filter(m => m.id === scope) : MS; const rows = [];
-        const rank = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-        for (const m of ms) {
-            if (filter === 'review') m.anoms.filter(a => a.rev).forEach(a => rows.push({ m, a: m.acts[a.s - 1], what: friendly(a.type), flag: friendly(a.sev), sev: rank[a.sev], note: a.onOk ? 'Hidden behind a success' : '' }));
-            if (filter === 'hidden') m.anoms.filter(a => a.onOk).forEach(a => rows.push({ m, a: m.acts[a.s - 1], what: friendly(a.type), flag: friendly(a.sev), sev: rank[a.sev], note: a.rev ? 'Needs review' : 'No review needed' }));
-            if (filter === 'failed') m.acts.filter(a => !a.ok).forEach(a => rows.push({ m, a, what: friendly(a.type), flag: friendly(a.fail), sev: a.bat < 30 ? 0 : 1, note: `Battery ${a.bat}%` }));
-            if (filter === 'readings') m.flags.forEach(f => rows.push({ m, a: m.acts[f.s - 1], what: `${readingName(f.type)} ${f.val}${unit(f.unit)}`, flag: `Normal about ${f.norm}${unit(f.unit)}`, sev: 0, note: '' }));
-        }
-        rows.sort((x, y) => x.sev - y.sev);
-        if (filter === 'assets') {
-            const by = {};
-            for (const m of ms) { m.acts.forEach(a => { const o = by[a.asset] ||= { asset: a.asset, missions: new Set(), fails: 0, rev: 0, anoms: 0, locs: new Set(), first: null }; if (!a.ok) { o.fails++; o.missions.add(m.id); o.first ||= [m.id, a.s]; } o.locs.add(LOC[a.loc].name); }); m.anoms.forEach(x => { const o = by[x.asset] ||= { asset: x.asset, missions: new Set(), fails: 0, rev: 0, anoms: 0, locs: new Set(), first: null }; o.anoms++; if (x.rev) { o.rev++; o.missions.add(m.id); o.first ||= [m.id, x.s]; } }); }
-            const list = Object.values(by).filter(o => o.missions.size).sort((a, b) => b.missions.size - a.missions.size || b.rev - a.rev);
-            q('#sp-result-content').innerHTML = `<table><thead><tr><th>Asset</th><th>Missions with a problem</th><th>Failed actions</th><th>Anomalies</th><th>Needs review</th><th>Where</th><th></th></tr></thead><tbody>${list.map(o => `<tr><td class="sp-mono">${esc(o.asset)}</td><td class="sp-num ${o.missions.size >= 3 ? 'sp-bad' : ''}">${o.missions.size}</td><td>${o.fails}</td><td>${o.anoms}</td><td>${o.rev || ''}</td><td class="sp-muted">${esc([...o.locs].join(', '))}</td><td><button data-replay="${o.first[0]}" data-step="${o.first[1]}">Show on map</button></td></tr>`).join('')}</tbody></table>`;
-            qa('[data-replay]').forEach(b => b.onclick = () => { view('control'); load(b.dataset.replay); jumpTo(Number(b.dataset.step) - 1); });
-            return;
-        }
-        q('#sp-result-content').innerHTML = rows.length ? `<table><thead><tr><th>Mission</th><th>Where / asset</th><th>Time</th><th>${filter === 'readings' ? 'Reading' : 'Finding'}</th><th>${filter === 'failed' ? 'Reason' : filter === 'readings' ? 'Normal' : 'Severity'}</th><th>Note</th><th></th></tr></thead><tbody>${rows.map(r => `<tr><td class="sp-mono">${r.m.id}</td><td>${esc(LOC[r.a.loc].name)}<br><span class="sp-muted sp-small">${esc(r.a.asset)}</span></td><td class="sp-mono">${esc(when(r.a.ts))}</td><td>${esc(r.what)}</td><td>${esc(r.flag)}</td><td class="sp-muted">${esc(r.note)}</td><td><button data-replay="${r.m.id}" data-step="${r.a.s}">Show on map</button></td></tr>`).join('')}</tbody></table>` : '<p class="sp-muted" style="padding:18px 0">No matching records.</p>';
-        qa('[data-replay]').forEach(b => b.onclick = () => { view('control'); load(b.dataset.replay); jumpTo(Number(b.dataset.step) - 1); });
+    let filter = 'review', scope = null, search = '';
+    const SEVR = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+    const FILTERS = [
+        ['review', 'bad', 'Needs review', 'anomalies an operator must look at', () => S.anomalies_review_required],
+        ['hidden', 'warn', 'Hidden behind a success', 'anomalies on actions marked OK', () => S.anomalies_on_successful_actions],
+        ['failed', 'warn', 'Missed steps', 'actions that failed', () => S.actions - S.actions_ok],
+        ['readings', 'info', 'Flagged readings', 'outside the normal range', () => S.reading_flags],
+        ['assets', 'teal', 'Repeat offenders', 'assets with problems in 2+ missions', () => Object.values(assetStats()).filter(o => o.missions.size >= 2).length],
+    ];
+    function assetStats() {
+        const by = {};
+        const get = id => by[id] ||= { asset: id, missions: new Set(), fails: 0, rev: 0, anoms: 0, locs: new Set(), first: null };
+        for (const m of MS) { m.acts.forEach(a => { const o = get(a.asset); if (!a.ok) { o.fails++; o.missions.add(m.id); o.first ||= [m.id, a.s]; } o.locs.add(LOC[a.loc].name); }); m.anoms.forEach(x => { const o = get(x.asset); o.anoms++; if (x.rev) { o.rev++; o.missions.add(m.id); o.first ||= [m.id, x.s]; } }); }
+        return by;
     }
+    q('#sp-result-filters').innerHTML = FILTERS.map(([k, c, l, s, n]) => `<button class="sp-rfilter ${c}" data-filter="${k}" aria-pressed="${k === filter}"><span class="n">${n()}</span><span class="l">${l}</span><span class="s">${s}</span></button>`).join('');
     qa('#sp-result-filters button').forEach(b => b.onclick = () => { filter = b.dataset.filter; renderResults(); });
     q('#sp-all-results').onclick = () => { scope = null; renderResults(); };
-
+    q('#sp-result-search').oninput = e => { search = e.target.value.trim().toLowerCase(); renderResults(); };
+    const sevLabel = { 0: 'Critical', 1: 'High', 2: 'Medium', 3: 'Low' };
+    const wire = () => qa('[data-replay]').forEach(b => b.onclick = () => { view('control'); load(b.dataset.replay); jumpTo(Number(b.dataset.step) - 1); });
+    function renderResults() {
+        qa('#sp-result-filters button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
+        q('#sp-results-title').textContent = FILTERS.find(f => f[0] === filter)[2];
+        q('#sp-results-scope').textContent = scope ? `Mission ${scope} only` : `All ${MS.length} missions`;
+        q('#sp-all-results').hidden = !scope;
+        const ms = scope ? MS.filter(m => m.id === scope) : MS;
+        const hit = (...xs) => !search || xs.some(x => String(x).toLowerCase().includes(search));
+        const out = q('#sp-result-content');
+        if (filter === 'assets') {
+            const list = Object.values(assetStats()).filter(o => o.missions.size && hit(o.asset, ...o.locs)).sort((a, b) => b.missions.size - a.missions.size || b.rev - a.rev);
+            out.innerHTML = list.length ? `<div class="sp-table-wrap"><table><thead><tr><th>Asset</th><th>Missions with a problem</th><th>Failed actions</th><th>Anomalies</th><th>Needs review</th><th>Where</th><th></th></tr></thead><tbody>${list.map(o => `<tr><td class="sp-mono">${esc(o.asset)}</td><td class="sp-num ${o.missions.size >= 3 ? 'sp-bad' : ''}">${o.missions.size}</td><td>${o.fails}</td><td>${o.anoms}</td><td>${o.rev || ''}</td><td class="sp-muted">${esc([...o.locs].join(', '))}</td><td><button data-replay="${o.first[0]}" data-step="${o.first[1]}">Show on map</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="sp-muted" style="padding:18px 0">No matching assets.</p>';
+            wire(); return;
+        }
+        // collect items per mission
+        const cards = [];
+        for (const m of ms) {
+            const items = [];
+            if (filter === 'review') m.anoms.filter(a => a.rev).forEach(a => items.push({ a: m.acts[a.s - 1], sev: SEVR[a.sev], tag: sevLabel[SEVR[a.sev]], cls: 'sp-sev ' + a.sev[0].toLowerCase(), what: friendly(a.type), note: a.onOk ? 'on an action marked OK' : '' }));
+            if (filter === 'hidden') m.anoms.filter(a => a.onOk).forEach(a => items.push({ a: m.acts[a.s - 1], sev: SEVR[a.sev], tag: sevLabel[SEVR[a.sev]], cls: 'sp-sev ' + a.sev[0].toLowerCase(), what: friendly(a.type), note: a.rev ? 'needs review' : 'no review needed' }));
+            if (filter === 'failed') m.acts.filter(a => !a.ok).forEach(a => items.push({ a, sev: a.bat < 30 ? 0 : 2, tag: 'Failed', cls: 'sp-sev f', what: `${friendly(a.type)}: ${friendly(a.fail).toLowerCase()}`, note: `battery ${a.bat}%${a.bat < 30 ? ' · danger zone' : ''}` }));
+            if (filter === 'readings') m.flags.forEach(f => items.push({ a: m.acts[f.s - 1], sev: 1, tag: 'Reading', cls: 'sp-sev r', what: `${readingName(f.type)} ${f.val}${unit(f.unit)}`, note: `normal about ${f.norm}${unit(f.unit)}`, asset: f.asset }));
+            const kept = items.filter(it => hit(it.asset || it.a.asset, LOC[it.a.loc].name, m.id));
+            if (kept.length) { kept.sort((x, y) => x.sev - y.sev); cards.push({ m, items: kept, worst: kept[0].sev }); }
+        }
+        cards.sort((x, y) => x.worst - y.worst || y.items.length - x.items.length);
+        if (!cards.length) { out.innerHTML = '<p class="sp-muted" style="padding:18px 0">Nothing matches.</p>'; return; }
+        const total = cards.reduce((n, c) => n + c.items.length, 0);
+        const groups = [[0, 'Act now'], [1, 'Look today'], [2, 'Routine'], [3, 'Low']];
+        let html = `<p class="sp-muted sp-small" style="margin-bottom:10px">${total} item${total === 1 ? '' : 's'} across ${cards.length} mission${cards.length === 1 ? '' : 's'}, worst first. Click any item to see it on the map.</p>`;
+        groups.forEach(([g, lab]) => {
+            const cs = cards.filter(c => c.worst === g); if (!cs.length) return;
+            html += `<div class="sp-rsect">${lab} · ${cs.length} mission${cs.length === 1 ? '' : 's'}</div><div class="sp-rcards">` + cs.map(c => `<div class="sp-rcard ${c.worst === 0 ? 'crit' : ''}"><div class="hd"><span class="sp-mono">${c.m.id}</span><span class="sp-pill ${c.m.v.toLowerCase()}">${c.m.v}</span><span class="sp-muted sp-small">${when(c.m.start)} · ${c.m.acts.filter(a => a.ok).length}/10 · said ${c.m.status}</span><button class="sp-mini" data-replay="${c.m.id}" data-step="10">Report</button></div>${c.items.map(it => `<div class="sp-ritem"><span class="${it.cls}">${esc(it.tag)}</span><div><div class="w">${esc(it.what)}</div><div class="m">${esc(it.asset || it.a.asset)} · ${esc(LOC[it.a.loc].name)}${it.note ? ' · ' + esc(it.note) : ''}</div></div><div style="text-align:right"><div class="t">${it.a.ts.slice(11, 16)}</div><button data-replay="${c.m.id}" data-step="${it.a.s}">Map</button></div></div>`).join('')}</div>`).join('') + '</div>';
+        });
+        out.innerHTML = html; wire();
+    }
     /* ---------------- Trends ---------------- */
     let trendsDrawn = false;
     function tipFor(svg) { const box = svg.parentElement; box.style.position = 'relative'; let t = box.querySelector('.sp-tip'); if (!t) { t = document.createElement('div'); t.className = 'sp-tip'; t.hidden = true; box.append(t); } return { show(ev, lines) { t.innerHTML = lines.map((l, i) => `<div class="${i ? '' : 'k'}">${esc(l)}</div>`).join(''); t.hidden = false; const b = box.getBoundingClientRect(); let x = ev.clientX - b.left + 12; if (x + t.offsetWidth > b.width) x = ev.clientX - b.left - t.offsetWidth - 12; t.style.left = x + 'px'; t.style.top = (ev.clientY - b.top + 12) + 'px'; }, hide() { t.hidden = true; } }; }
     function drawTrends() {
         if (trendsDrawn) return; trendsDrawn = true;
-        { const s = q('#ch-head'), T = tipFor(s); const clean = MS.filter(m => m.status === 'COMPLETED' && m.acts.every(a => a.ok)), withF = MS.filter(m => m.status === 'COMPLETED' && m.acts.some(a => !a.ok)), failed = MS.filter(m => m.status !== 'COMPLETED');
-            const segs = [['Completed, every action succeeded', clean, 'var(--sp-ok)'], ['Completed, but actions failed inside', withF, '#e0962e'], ['Robot said FAILED', failed, 'var(--sp-bad)']];
-            const W = 1000, x0 = 10, bw = W - 20, y = 34, h = 36; let x = x0;
-            segs.forEach(([lab, ms, c], si) => { const w = bw * ms.length / MS.length; const anchor = si === 0 ? 'start' : si === segs.length - 1 ? 'end' : 'middle', lx = si === 0 ? x : si === segs.length - 1 ? x + w - 2 : x + w / 2 - 1; const r = sv('rect', { x, y, width: w - 2, height: h, rx: 5, fill: c }); r.addEventListener('mousemove', ev => T.show(ev, [lab, `${ms.length} of ${MS.length} missions`, ms.map(m => m.id).join(', ')])); r.addEventListener('mouseleave', T.hide); s.append(r);
-                s.append(sv('text', { class: 'lbl', x: x + w / 2 - 1, y: y + h / 2 + 5, 'text-anchor': 'middle', fill: '#fff', 'font-size': 15 }, ms.length)); s.append(sv('text', { x: lx, y: y + h + 16, 'text-anchor': anchor, 'font-size': 11 }, lab)); x += w; });
-            s.append(sv('text', { class: 'lbl', x: x0, y: 20, 'font-size': 12 }, `${S.missions_completed} of ${S.missions} missions reported COMPLETED. Only ${clean.length} of those had every action succeed.`));
-            s.append(sv('text', { x: x0, y: 106, 'font-size': 11 }, 'Mission status says the robot finished its route. It says nothing about whether the inspections worked.'));
-        }
         const bands = [['Under 20%', 0, 20], ['20–29%', 20, 30], ['30–39%', 30, 40], ['40–49%', 40, 50], ['50–59%', 50, 60], ['60%+', 60, 101]];
         { const s = q('#ch-cliff'), T = tipFor(s); const W = 520, H = 270, l = 38, b = 42, t = 20, r = 8, bw = (W - l - r) / bands.length;
             [0, 25, 50, 75, 100].forEach(v => { const y = H - b - (H - b - t) * v / 100; s.append(sv('line', { class: 'grid-l', x1: l, x2: W - r, y1: y, y2: y })); s.append(sv('text', { x: l - 6, y: y + 4, 'text-anchor': 'end' }, v + '%')); });
@@ -357,10 +373,21 @@
         }
     }
 
+    /* ---------------- Mission picker ---------------- */
+    const sel = q('#sp-mission-select');
+    sel.innerHTML = MS.slice().reverse().map(m => { const n = reviewCount(m), ok = m.acts.filter(a => a.ok).length; return `<option value="${m.id}">${m.id} · ${m.v} · ${when(m.start)} · ${ok}/10${n ? ` · ${n} to review` : ''}${DEMO[m.id] ? ` · ${DEMO[m.id]}` : ''}</option>`; }).join('');
+    sel.onchange = () => load(sel.value, true);
+    const stepMission = d => { const i = MS.findIndex(m => m.id === cur.id) + d; if (MS[i]) load(MS[i].id, true); };
+    q('#sp-prev').onclick = () => stepMission(-1); q('#sp-next').onclick = () => stepMission(1);
+    q('#sp-browse').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.textContent = on ? 'Hide mission list' : 'Browse all missions'; q('.sp-queue-panel').hidden = !on; q('#sp-control').classList.toggle('show-queue', on); };
+
     /* ---------------- Boot ---------------- */
     drawBase();
     cur = MS.find(m => m.id === 'M014');
     renderQueue();
-    load('M014', true);
+    load('M014');
     renderResults();
+    view('control');
+    const autoplay = setTimeout(() => { if (phase === 'idle' && !playing) play(); }, 900);
+    document.addEventListener('pointerdown', () => clearTimeout(autoplay), { once: true });
 })();

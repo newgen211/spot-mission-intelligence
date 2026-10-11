@@ -3,14 +3,14 @@
 Open `index.html` in a browser. No build, no server, no dependencies.
 
 Files
-- index.html: layout and the four views (Overview, Mission control, What needs attention, Is it getting better?)
+- index.html: layout and the three views (Live replay, Overview, What needs attention). Overview holds the headline numbers, the mission timeline and the trend charts.
 - styles.css: light and dark teal palette, all classes scoped under #spot-click-through
-- app.js: navigation, mission replay on the floor plan, telemetry, alerts, mission report, results filters, trends charts
+- app.js: navigation, mission replay on the floor plan, telemetry, alerts, mission report, results filters, overview charts
 - sample-data.js: window.SPOT_SAMPLE_DATA, generated from findings.json (27 missions, 270 actions, 40 anomalies, 15 reading flags, AI briefs)
 - fictional_floor_plan.png: the facility map; waypoint pins are placed with the measured px/py in sample-data.js
 
 How the replay works
-- Pick a mission in the queue, press Play (or space bar). The robot walks the route pin to pin, the battery gauge drains, alerts appear on the right as they happen.
+- The page opens on Live replay and autoplays M014. Pick a mission from the dropdown (or the arrows, or "Browse all missions" for the full list), press Play (or space bar). The robot walks the route pin to pin, the battery gauge drains, alerts appear on the right as they happen.
 - Speeds 1x to 8x. Restart, Skip to end, click a numbered step, a pin on the map, or an alert to jump to that action. Space plays and pauses, left and right arrows step.
 - Light / dark toggle in the header. The choice is remembered in the browser.
 - When the mission ends the report fills in: actions succeeded, what the robot reported, the brief, the Next step, and the attention table.
