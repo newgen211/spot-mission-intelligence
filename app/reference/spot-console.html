@@ -1,0 +1,586 @@
+<title>SPOT Inspection Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: control-room console. Header bar, then three columns: mission queue | facility map + timeline + report | live telemetry + alerts.
+   A deliberate single dark look (operator consoles run dark); every color is a token below. */
+:root{
+  color-scheme: dark;
+  --bg:#0c1113; --panel:#131a1d; --panel-2:#182125; --line:#243035; --line-2:#2f3d43;
+  --fg:#e4ebe8; --fg-2:#a7b4b0; --muted:#74837f;
+  --ok:#37c98a; --ok-dim:#1c5e44; --bad:#ff5a5f; --bad-dim:#5c2427; --warn:#f2b33d; --warn-dim:#5a4518;
+  --robot:#4cc9f0; --v1:#5b9bf0; --v2:#f08a4b;
+  --font-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:8px;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.45;margin:0}
+button{font:inherit;color:inherit}
+button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--robot);outline-offset:2px}
+.mono{font-family:var(--font-mono)}
+.num{font-variant-numeric:tabular-nums}
+
+/* Header */
+.hdr{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font-family:var(--font-display);font-weight:600;font-size:22px;letter-spacing:.06em;text-transform:uppercase}
+.brand span{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.views{display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:2px}
+.views button{background:none;border:0;padding:6px 12px;border-radius:6px;cursor:pointer;color:var(--fg-2);font-weight:500}
+.views button[aria-selected=true]{background:var(--panel-2);color:var(--fg)}
+.fleet{display:flex;gap:18px;margin-left:auto;flex-wrap:wrap}
+.fleet div{display:flex;flex-direction:column;line-height:1.1}
+.fleet b{font-family:var(--font-display);font-size:22px;font-weight:600}
+.fleet span{font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+
+/* Main grid */
+.wrap{padding:12px 16px 24px}
+.grid{display:grid;grid-template-columns:270px minmax(0,1fr) 330px;gap:12px;align-items:start}
+@media (max-width:1180px){.grid{grid-template-columns:230px minmax(0,1fr)} .rail-r{grid-column:1/-1}}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)} .wrap{padding-inline:16px} .grid>aside{order:3} .queue{max-height:340px;min-height:0} .fleet{margin-left:0}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.card-h h2{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-2);margin:0;font-weight:600}
+.card-b{padding:12px}
+
+/* Mission queue */
+.filters{display:flex;gap:4px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line)}
+.chip{background:none;border:1px solid var(--line-2);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--fg-2);cursor:pointer}
+.chip[aria-pressed=true]{border-color:var(--robot);color:var(--fg);background:rgba(76,201,240,.08)}
+.queue{max-height:calc(100vh - 170px);min-height:420px;overflow:auto}
+.q{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:none;border-left:3px solid transparent;border-top:0;border-right:0}
+.q:hover{background:var(--panel-2)}
+.q[aria-current=true]{background:var(--panel-2);border-left-color:var(--robot)}
+.q .id{font-family:var(--font-mono);font-weight:500}
+.q .when{color:var(--muted);font-size:12px}
+.q .strip{grid-column:1/3;display:grid;grid-template-columns:repeat(10,1fr);gap:2px;margin-top:4px}
+.q .strip i{height:6px;border-radius:2px;background:var(--ok)}
+.q .strip i.f{background:var(--bad)}
+.q .badges{grid-row:1/3;grid-column:3;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.pill{font-size:11px;border-radius:4px;padding:0 6px;border:1px solid currentColor;font-family:var(--font-mono);white-space:nowrap}
+.pill.v1{color:var(--v1)} .pill.v2{color:var(--v2)}
+.alertn{font-size:11px;font-weight:600;border-radius:999px;padding:0 7px;background:var(--bad-dim);color:#ffb3b5}
+.alertn.zero{background:none;color:var(--muted);font-weight:400}
+
+/* Map */
+.mapbox{position:relative}
+.map{display:block;width:100%;height:auto}
+.map .grid-l{stroke:var(--line);stroke-width:1}
+.map .wp circle{fill:var(--panel-2);stroke:var(--line-2);stroke-width:1.5}
+.map .wp text{fill:var(--muted);font-size:13px;font-family:var(--font-body)}
+.map .wp.on circle{stroke:var(--fg-2)}
+.map .wp.on text{fill:var(--fg-2)}
+.map .route{fill:none;stroke:var(--line-2);stroke-width:2;stroke-dasharray:4 6}
+.map .trail{fill:none;stroke:var(--robot);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
+.map .stop circle{stroke:var(--bg);stroke-width:2}
+.map .stop text{font-family:var(--font-mono);font-size:12px;font-weight:500;fill:#0c1113;text-anchor:middle;dominant-baseline:central}
+.map .stop.pending circle{fill:var(--panel-2);stroke:var(--line-2)}
+.map .stop.pending text{fill:var(--muted)}
+.map .stop.ok circle{fill:var(--ok)}
+.map .stop.bad circle{fill:var(--bad)}
+.map .ping{fill:none;stroke:var(--bad);stroke-width:2;opacity:0}
+.map .robot-halo{fill:var(--robot);opacity:.18}
+.map .robot{fill:var(--robot);stroke:#0c1113;stroke-width:2}
+@media (prefers-reduced-motion:no-preference){
+  .map .ping.go{animation:ping 1.2s ease-out 2}
+  .map .robot-halo{animation:halo 1.6s ease-in-out infinite}
+}
+@keyframes ping{0%{opacity:.9;r:12}100%{opacity:0;r:34}}
+@keyframes halo{0%,100%{opacity:.12}50%{opacity:.3}}
+.maplegend{position:absolute;left:12px;bottom:10px;display:flex;gap:12px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.maplegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+
+/* Transport bar */
+.transport{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line)}
+.btn{background:var(--panel-2);border:1px solid var(--line-2);border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--fg-2)}
+.btn.primary{background:var(--robot);border-color:var(--robot);color:#06222b}
+.speed{display:flex;gap:2px}
+.speed button{background:none;border:1px solid var(--line-2);padding:4px 8px;cursor:pointer;font-family:var(--font-mono);font-size:12px;color:var(--fg-2)}
+.speed button:first-child{border-radius:6px 0 0 6px}.speed button:last-child{border-radius:0 6px 6px 0}
+.speed button[aria-pressed=true]{background:var(--panel-2);color:var(--fg);border-color:var(--fg-2)}
+.steps{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px;flex:1;min-width:220px}
+.steps button{height:22px;border-radius:4px;border:1px solid var(--line-2);background:var(--bg);cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding:0}
+.steps button.ok{background:var(--ok-dim);border-color:var(--ok);color:#c8f5df}
+.steps button.bad{background:var(--bad-dim);border-color:var(--bad);color:#ffd0d1}
+.steps button.cur{outline:2px solid var(--robot);outline-offset:1px}
+.clock{font-family:var(--font-mono);color:var(--fg-2);font-size:13px;min-width:7.5em;text-align:right}
+
+/* Right rail */
+.rail-r{display:grid;gap:12px}
+.batt{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.batt .big{font-family:var(--font-display);font-size:56px;line-height:.9;font-weight:600}
+.batt .big small{font-size:28px;color:var(--fg-2)}
+.gauge{position:relative;height:14px;border-radius:4px;background:var(--bg);border:1px solid var(--line-2);margin-top:10px;overflow:hidden}
+.gauge .fill{position:absolute;inset:0 auto 0 0;background:var(--ok);transition:width .25s linear,background .3s}
+.gauge .zone{position:absolute;inset:0 auto 0 0;width:30%;background:repeating-linear-gradient(135deg,transparent 0 5px,rgba(255,90,95,.18) 5px 8px);border-right:1px dashed var(--bad)}
+.gauge-l{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px}
+.stat b{display:block;font-family:var(--font-display);font-size:26px;line-height:1;font-weight:600}
+.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.now{margin-top:12px;border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--bg)}
+.now .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.now .t{font-weight:600;margin-top:2px}
+.now .s{color:var(--fg-2);font-size:13px}
+.now .r{margin-top:6px;font-family:var(--font-mono);font-size:12px}
+.alerts{display:grid;gap:8px;max-height:420px;overflow:auto}
+.al{border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:6px;padding:8px 10px;background:var(--bg)}
+.al.crit{border-left-color:var(--bad)} .al.fail{border-left-color:var(--bad)} .al.read{border-left-color:var(--robot)} .al.low{border-left-color:var(--line-2)}
+.al .top{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.al .t{font-weight:600;margin-top:2px}
+.al .s{color:var(--fg-2);font-size:13px}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;margin-top:5px;margin-right:4px;font-weight:500}
+.tag.rev{background:var(--bad-dim);color:#ffc2c4}
+.tag.hid{background:var(--warn-dim);color:#ffe0a3}
+@media (prefers-reduced-motion:no-preference){.al.new{animation:slide .35s ease-out}}
+@keyframes slide{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+.empty{color:var(--muted);font-size:13px;padding:6px 0}
+
+/* Report */
+.report{margin-top:12px}
+.rep-head{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center}
+.rep-head .hl{font-family:var(--font-display);font-size:40px;font-weight:600;line-height:1}
+.rep-head .hl small{font-size:20px;color:var(--fg-2);font-weight:500}
+.stamp{font-family:var(--font-display);font-size:18px;letter-spacing:.1em;border:2px solid currentColor;border-radius:4px;padding:0 8px;transform:rotate(-3deg);display:inline-block}
+.stamp.ok{color:var(--ok)} .stamp.bad{color:var(--bad)}
+.rep-meta{display:flex;gap:20px;flex-wrap:wrap;color:var(--fg-2);font-size:13px}
+.rep-meta b{color:var(--fg);font-weight:500}
+.irony{font-size:13px;color:var(--warn);margin-top:6px}
+.brief{margin-top:14px;border:1px solid var(--line-2);border-radius:var(--r);padding:14px 16px;background:var(--panel-2);max-width:78ch}
+.brief p{margin:0;font-size:15px;line-height:1.6}
+.brief .next{margin-top:12px;padding-top:10px;border-top:1px solid var(--line-2);font-weight:600;font-size:15px}
+.brief .next span{color:var(--robot);letter-spacing:.06em;text-transform:uppercase;font-size:12px;margin-right:8px}
+.prov{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.prov .ai{color:var(--ok)} .prov .tp{color:var(--warn)}
+details.honest{margin-top:10px;font-size:13px}
+details.honest summary{cursor:pointer;color:var(--fg-2)}
+details.honest ul{margin:8px 0 0;padding-left:18px;color:var(--fg-2)}
+details.honest li{margin-bottom:6px}
+details.honest q{color:var(--fg)}
+.tbl-wrap{overflow-x:auto;margin-top:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:6px 10px 6px 0;border-bottom:1px solid var(--line-2);white-space:nowrap}
+td{padding:7px 10px 7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.sev{font-family:var(--font-mono);font-size:12px}
+.sev.c{color:var(--bad)} .sev.h{color:#ff8c8f} .sev.m{color:var(--warn)} .sev.l{color:var(--muted)} .sev.f{color:var(--bad)} .sev.r{color:var(--robot)}
+.pending-note{color:var(--muted);font-size:13px}
+
+/* Trends */
+.trends{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:12px}
+.findings{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin-bottom:12px}
+.finding{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.finding b{font-family:var(--font-display);font-size:34px;font-weight:600;line-height:1;display:block}
+.finding p{margin:6px 0 0;color:var(--fg-2);font-size:13px}
+.chart{display:block;width:100%;height:auto}
+.chart text{fill:var(--muted);font-size:12px;font-family:var(--font-body)}
+.chart .lbl{fill:var(--fg);font-weight:500}
+.chart .grid-l{stroke:var(--line);stroke-width:1}
+.note{color:var(--fg-2);font-size:13px;margin:0 0 8px}
+.heat td,.heat th{text-align:center}
+.heat td:first-child,.heat th:first-child{text-align:left}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--fg-2);flex-wrap:wrap;margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.tip{position:absolute;pointer-events:none;background:#0a0e10;border:1px solid var(--line-2);border-radius:6px;padding:6px 9px;font-size:12px;white-space:nowrap;z-index:5;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.tip .k{color:var(--muted)}
+.foot{color:var(--muted);font-size:12px;margin-top:16px}
+</style>
+
+<header class="hdr">
+  <div class="brand"><b>SPOT</b><span>Inspection Console · Plant St. Lucie (synthetic)</span></div>
+  <div class="views" role="tablist" aria-label="View">
+    <button role="tab" id="tab-live" aria-selected="true" aria-controls="view-live">Mission control</button>
+    <button role="tab" id="tab-trends" aria-selected="false" aria-controls="view-trends">Fleet trends</button>
+  </div>
+  <div class="fleet" id="fleet"></div>
+</header>
+
+<main class="wrap">
+  <section id="view-live" role="tabpanel" aria-labelledby="tab-live">
+    <div class="grid">
+      <aside class="card" aria-label="Mission queue">
+        <div class="card-h"><h2>Missions</h2><span class="mono" style="color:var(--muted);font-size:12px" id="qcount"></span></div>
+        <div class="filters" id="filters"></div>
+        <div class="queue" id="queue"></div>
+      </aside>
+
+      <div style="min-width:0">
+        <div class="card">
+          <div class="card-h"><h2 id="map-title">Facility map</h2><span class="mono" style="color:var(--muted);font-size:12px" id="map-sub"></span></div>
+          <div class="mapbox">
+            <svg class="map" id="map" viewBox="0 0 1000 560" role="img" aria-label="Facility map with the robot's route"></svg>
+            <div class="maplegend"><span><i style="background:var(--robot)"></i>Robot</span><span><i style="background:var(--ok)"></i>Action succeeded</span><span><i style="background:var(--bad)"></i>Action failed</span><span><i style="background:var(--panel-2);border:1px solid var(--line-2)"></i>Not reached yet</span></div>
+          </div>
+          <div class="transport">
+            <button class="btn primary" id="play">Play</button>
+            <button class="btn" id="restart">Restart</button>
+            <button class="btn" id="skip">Skip to end</button>
+            <div class="speed" id="speed" role="group" aria-label="Playback speed"></div>
+            <div class="steps" id="steps" aria-label="Actions in this mission"></div>
+            <div class="clock num" id="clock">--:--:--</div>
+          </div>
+        </div>
+
+        <section class="card report" aria-labelledby="rep-title">
+          <div class="card-h"><h2 id="rep-title">Mission report</h2><span class="mono" style="color:var(--muted);font-size:12px" id="rep-sub"></span></div>
+          <div class="card-b" id="report"></div>
+        </section>
+      </div>
+
+      <div class="rail-r">
+        <section class="card" aria-labelledby="tele-h">
+          <div class="card-h"><h2 id="tele-h">Live telemetry</h2><span class="mono" id="tele-state" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="card-b">
+            <div class="batt"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Battery</div><div class="big num" id="bat">--<small>%</small></div></div><div id="bat-note" style="font-size:12px;text-align:right"></div></div>
+            <div class="gauge" aria-hidden="true"><div class="fill" id="gfill"></div><div class="zone"></div></div>
+            <div class="gauge-l"><span>0</span><span style="color:var(--bad)">30% danger line</span><span>100</span></div>
+            <div class="stats">
+              <div class="stat"><b class="num" id="st-done">0</b><span>Done</span></div>
+              <div class="stat"><b class="num" id="st-ok" style="color:var(--ok)">0</b><span>Succeeded</span></div>
+              <div class="stat"><b class="num" id="st-bad" style="color:var(--bad)">0</b><span>Failed</span></div>
+            </div>
+            <div class="now" id="now"></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="al-h">
+          <div class="card-h"><h2 id="al-h">Needs a human</h2><span class="alertn zero" id="al-n">0</span></div>
+          <div class="card-b"><div class="alerts" id="alerts" aria-live="polite"></div></div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-trends" role="tabpanel" aria-labelledby="tab-trends" hidden>
+    <div class="findings" id="findings"></div>
+    <div class="trends">
+      <div class="card"><div class="card-h"><h2>The battery cliff</h2></div><div class="card-b" style="position:relative"><p class="note">Share of actions that succeeded, by battery level when the action ran.</p><svg class="chart" id="ch-cliff" viewBox="0 0 520 260"></svg></div></div>
+      <div class="card"><div class="card-h"><h2>V1 vs V2, at the same battery</h2></div><div class="card-b" style="position:relative"><p class="note">Overall V2 looks 14 points better. Compared at the same battery level, the gap mostly disappears.</p><div class="legend"><span><i style="background:var(--v1)"></i>V1</span><span><i style="background:var(--v2)"></i>V2</span></div><svg class="chart" id="ch-vs" viewBox="0 0 520 240"></svg></div></div>
+      <div class="card"><div class="card-h"><h2>V2 keeps the robot charged</h2></div><div class="card-b" style="position:relative"><p class="note">Every mission's battery from start to end. V2 uses less per minute and finishes far above the danger line.</p><div class="legend"><span><i style="background:var(--v1)"></i>V1 missions</span><span><i style="background:var(--v2)"></i>V2 missions</span></div><svg class="chart" id="ch-drain" viewBox="0 0 520 260"></svg></div></div>
+      <div class="card"><div class="card-h"><h2>Low battery breaks sensors, not walking</h2></div><div class="card-b"><p class="note">Failed actions by failure type and battery level. Sensor failures pile up under 30%; navigation failures don't track battery.</p><div class="tbl-wrap" style="margin-top:4px"><table class="heat" id="heat"></table></div></div></div>
+      <div class="card"><div class="card-h"><h2>Where SPOT stumbles</h2></div><div class="card-b" style="position:relative"><p class="note">Circle size is visits; color is how often actions fail there.</p><svg class="chart" id="ch-loc" viewBox="0 0 520 300"></svg></div></div>
+      <div class="card"><div class="card-h"><h2>Least reliable actions</h2></div><div class="card-b"><svg class="chart" id="ch-type" viewBox="0 0 520 210"></svg></div></div>
+    </div>
+    <p class="foot">All data is synthetic challenge data. Location means where the action ran. V2 ran entirely after V1, so V1 vs V2 is a before and after, not a side-by-side test.</p>
+  </section>
+</main>
+
+<script id="spot-data" type="application/json">{"summary":{"missions":27,"missions_completed":26,"mission_completion_rate":0.963,"actions":270,"actions_ok":221,"action_success_rate":0.819,"completed_missions_with_failures":21,"anomalies":40,"anomalies_review_required":15,"anomalies_on_successful_actions":8,"reading_flags":15,"readings_questionable":42,"date_range":["2026-09-01T18:00:00","2026-09-10T10:25:00"]},"missions":[{"id":"M001","v":"V1","status":"COMPLETED","start":"2026-09-01T18:00:00","end":"2026-09-01T18:31:00","dur":31,"b0":82,"b1":15,"acts":[{"s":1,"ts":"2026-09-01T18:03:06","loc":"WP05","asset":"HX-201","type":"NAVIGATION","bat":75,"ok":false,"fail":"OBSTACLE_DETECTION"},{"s":2,"ts":"2026-09-01T18:06:12","loc":"WP10","asset":"PUMP-205","type":"VISUAL_INSPECTION","bat":69,"ok":true,"fail":null},{"s":3,"ts":"2026-09-01T18:09:18","loc":"WP10","asset":"PUMP-205","type":"ACOUSTIC_INSPECTION","bat":62,"ok":true,"fail":null},{"s":4,"ts":"2026-09-01T18:12:24","loc":"WP09","asset":"PANEL-212","type":"VISUAL_INSPECTION","bat":55,"ok":true,"fail":null},{"s":5,"ts":"2026-09-01T18:15:30","loc":"WP01","asset":"PANEL-215","type":"ACOUSTIC_INSPECTION","bat":48,"ok":true,"fail":null},{"s":6,"ts":"2026-09-01T18:18:36","loc":"WP12","asset":"VALVE-207","type":"VISUAL_INSPECTION","bat":42,"ok":true,"fail":null},{"s":7,"ts":"2026-09-01T18:21:42","loc":"WP15","asset":"PUMP-205","type":"VISUAL_INSPECTION","bat":35,"ok":true,"fail":null},{"s":8,"ts":"2026-09-01T18:24:48","loc":"WP07","asset":"PANEL-218","type":"THERMAL_INSPECTION","bat":28,"ok":true,"fail":null},{"s":9,"ts":"2026-09-01T18:27:54","loc":"WP03","asset":"HX-208","type":"VISUAL_INSPECTION","bat":22,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":10,"ts":"2026-09-01T18:31:00","loc":"WP05","asset":"HX-204","type":"VISUAL_INSPECTION","bat":15,"ok":true,"fail":null}],"anoms":[{"s":9,"sev":"HIGH","type":"VISUAL_DEFECT","asset":"HX-208","loc":"WP03","rev":true,"onOk":false},{"s":1,"sev":"LOW","type":"NAVIGATION_OBSTRUCTION","asset":"HX-201","loc":"WP05","rev":false,"onOk":false}],"flags":[{"s":1,"asset":"HX-201","type":"LOCALIZATION_CONFIDENCE_PCT","val":44.4,"unit":"pct","norm":88.3}],"brief":"Mission M001 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-201); visual inspection at Cooling Loop (HX-208). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 82% to 15%.","next":"check HX-208 at Cooling Loop (high visual defect).","ai":"Mission M001 was completed with 8 out of 10 actions succeeding. Two actions failed: one at Pipe Gallery due to obstacle detection, and another at Cooling Loop due to sensor timeout. There were two anomalies: a high visual defect on HX-208 and a low navigation obstruction on HX-201. The battery started at 82% and ended at 15%. Localization confidence on HX-201 was 44.4%, which is below normal."},{"id":"M002","v":"V1","status":"COMPLETED","start":"2026-09-02T02:00:00","end":"2026-09-02T02:31:00","dur":31,"b0":79,"b1":28,"acts":[{"s":1,"ts":"2026-09-02T02:03:06","loc":"WP05","asset":"HX-202","type":"NAVIGATION","bat":74,"ok":true,"fail":null},{"s":2,"ts":"2026-09-02T02:06:12","loc":"WP14","asset":"MOTOR-206","type":"VISUAL_INSPECTION","bat":69,"ok":true,"fail":null},{"s":3,"ts":"2026-09-02T02:09:18","loc":"WP06","asset":"HX-217","type":"ACOUSTIC_INSPECTION","bat":64,"ok":true,"fail":null},{"s":4,"ts":"2026-09-02T02:12:24","loc":"WP01","asset":"PANEL-215","type":"NAVIGATION","bat":59,"ok":true,"fail":null},{"s":5,"ts":"2026-09-02T02:15:30","loc":"WP13","asset":"HX-219","type":"VISUAL_INSPECTION","bat":54,"ok":true,"fail":null},{"s":6,"ts":"2026-09-02T02:18:36","loc":"WP09","asset":"PANEL-211","type":"ACOUSTIC_INSPECTION","bat":48,"ok":false,"fail":"READING_UNRELIABLE"},{"s":7,"ts":"2026-09-02T02:21:42","loc":"WP03","asset":"HX-208","type":"GAUGE_READING","bat":43,"ok":true,"fail":null},{"s":8,"ts":"2026-09-02T02:24:48","loc":"WP03","asset":"HX-208","type":"GAUGE_READING","bat":38,"ok":true,"fail":null},{"s":9,"ts":"2026-09-02T02:27:54","loc":"WP11","asset":"HX-210","type":"ACOUSTIC_INSPECTION","bat":33,"ok":true,"fail":null},{"s":10,"ts":"2026-09-02T02:31:00","loc":"WP05","asset":"PANEL-203","type":"VISUAL_INSPECTION","bat":28,"ok":true,"fail":null}],"anoms":[{"s":6,"sev":"MEDIUM","type":"ABNORMAL_VIBRATION","asset":"PANEL-211","loc":"WP09","rev":false,"onOk":false}],"flags":[],"brief":"Mission M002 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Turbine Hall South (PANEL-211). 1 anomaly recorded, 0 needing review. Battery went from 79% to 28%.","next":"review why Turbine Hall South failed.","ai":null},{"id":"M003","v":"V1","status":"COMPLETED","start":"2026-09-02T10:00:00","end":"2026-09-02T10:28:00","dur":28,"b0":75,"b1":17,"acts":[{"s":1,"ts":"2026-09-02T10:02:48","loc":"WP05","asset":"PANEL-203","type":"NAVIGATION","bat":69,"ok":true,"fail":null},{"s":2,"ts":"2026-09-02T10:05:36","loc":"WP04","asset":"COMP-214","type":"THERMAL_INSPECTION","bat":63,"ok":true,"fail":null},{"s":3,"ts":"2026-09-02T10:08:24","loc":"WP10","asset":"PUMP-205","type":"THERMAL_INSPECTION","bat":58,"ok":true,"fail":null},{"s":4,"ts":"2026-09-02T10:11:12","loc":"WP11","asset":"HX-210","type":"NAVIGATION","bat":52,"ok":true,"fail":null},{"s":5,"ts":"2026-09-02T10:14:00","loc":"WP10","asset":"PUMP-205","type":"THERMAL_INSPECTION","bat":46,"ok":true,"fail":null},{"s":6,"ts":"2026-09-02T10:16:48","loc":"WP11","asset":"HX-210","type":"NAVIGATION","bat":40,"ok":true,"fail":null},{"s":7,"ts":"2026-09-02T10:19:36","loc":"WP07","asset":"HX-210","type":"NAVIGATION","bat":34,"ok":true,"fail":null},{"s":8,"ts":"2026-09-02T10:22:24","loc":"WP15","asset":"HX-201","type":"THERMAL_INSPECTION","bat":29,"ok":false,"fail":"TARGET_NOT_DETECTED"},{"s":9,"ts":"2026-09-02T10:25:12","loc":"WP05","asset":"HX-204","type":"THERMAL_INSPECTION","bat":23,"ok":false,"fail":"TARGET_NOT_DETECTED"},{"s":10,"ts":"2026-09-02T10:28:00","loc":"WP04","asset":"COMP-214","type":"GAUGE_READING","bat":17,"ok":false,"fail":"SENSOR_TIMEOUT"}],"anoms":[{"s":8,"sev":"MEDIUM","type":"ABNORMAL_TEMPERATURE","asset":"HX-201","loc":"WP15","rev":false,"onOk":false},{"s":9,"sev":"LOW","type":"ABNORMAL_TEMPERATURE","asset":"HX-204","loc":"WP05","rev":false,"onOk":false}],"flags":[],"brief":"Mission M003 was marked completed. 7 of 10 actions succeeded. Failed: thermal inspection at Inspection Dock (HX-201); thermal inspection at Pipe Gallery (HX-204); gauge reading at Pump Bay (COMP-214). 2 anomalies recorded, 0 needing review. Battery went from 75% to 17%.","next":"review why Inspection Dock failed.","ai":null},{"id":"M004","v":"V1","status":"COMPLETED","start":"2026-09-02T18:00:00","end":"2026-09-02T18:30:00","dur":30,"b0":81,"b1":27,"acts":[{"s":1,"ts":"2026-09-02T18:03:00","loc":"WP05","asset":"HX-204","type":"NAVIGATION","bat":76,"ok":false,"fail":"COMMUNICATION_LOSS"},{"s":2,"ts":"2026-09-02T18:06:00","loc":"WP11","asset":"HX-210","type":"VISUAL_INSPECTION","bat":70,"ok":true,"fail":null},{"s":3,"ts":"2026-09-02T18:09:00","loc":"WP07","asset":"HX-213","type":"THERMAL_INSPECTION","bat":65,"ok":true,"fail":null},{"s":4,"ts":"2026-09-02T18:12:00","loc":"WP13","asset":"HX-213","type":"VISUAL_INSPECTION","bat":59,"ok":true,"fail":null},{"s":5,"ts":"2026-09-02T18:15:00","loc":"WP11","asset":"HX-210","type":"NAVIGATION","bat":54,"ok":true,"fail":null},{"s":6,"ts":"2026-09-02T18:18:00","loc":"WP01","asset":"PANEL-215","type":"THERMAL_INSPECTION","bat":49,"ok":true,"fail":null},{"s":7,"ts":"2026-09-02T18:21:00","loc":"WP06","asset":"HX-217","type":"NAVIGATION","bat":43,"ok":true,"fail":null},{"s":8,"ts":"2026-09-02T18:24:00","loc":"WP09","asset":"PANEL-211","type":"GAUGE_READING","bat":38,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":9,"ts":"2026-09-02T18:27:00","loc":"WP06","asset":"HX-217","type":"VISUAL_INSPECTION","bat":32,"ok":true,"fail":null},{"s":10,"ts":"2026-09-02T18:30:00","loc":"WP08","asset":"HX-202","type":"NAVIGATION","bat":27,"ok":true,"fail":null}],"anoms":[{"s":7,"sev":"HIGH","type":"LOCALIZATION_ISSUE","asset":"HX-217","loc":"WP06","rev":true,"onOk":true},{"s":8,"sev":"MEDIUM","type":"GAUGE_OUT_OF_RANGE","asset":"PANEL-211","loc":"WP09","rev":false,"onOk":false},{"s":1,"sev":"LOW","type":"NAVIGATION_OBSTRUCTION","asset":"HX-204","loc":"WP05","rev":false,"onOk":false}],"flags":[{"s":1,"asset":"HX-204","type":"LOCALIZATION_CONFIDENCE_PCT","val":66.2,"unit":"pct","norm":88.3}],"brief":"Mission M004 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-204); gauge reading at Turbine Hall South (PANEL-211). 3 anomalies recorded, 1 needing review, 1 on an action that reported success. 1 reading fell outside the normal range for its type. Battery went from 81% to 27%.","next":"check HX-217 at Compressor Area (high localization issue).","ai":null},{"id":"M005","v":"V1","status":"COMPLETED","start":"2026-09-03T02:00:00","end":"2026-09-03T02:25:00","dur":25,"b0":78,"b1":20,"acts":[{"s":1,"ts":"2026-09-03T02:02:30","loc":"WP05","asset":"HX-201","type":"NAVIGATION","bat":72,"ok":true,"fail":null},{"s":2,"ts":"2026-09-03T02:05:00","loc":"WP06","asset":"HX-217","type":"THERMAL_INSPECTION","bat":66,"ok":true,"fail":null},{"s":3,"ts":"2026-09-03T02:07:30","loc":"WP09","asset":"PANEL-212","type":"NAVIGATION","bat":61,"ok":true,"fail":null},{"s":4,"ts":"2026-09-03T02:10:00","loc":"WP04","asset":"COMP-214","type":"ACOUSTIC_INSPECTION","bat":55,"ok":true,"fail":null},{"s":5,"ts":"2026-09-03T02:12:30","loc":"WP06","asset":"HX-217","type":"GAUGE_READING","bat":49,"ok":true,"fail":null},{"s":6,"ts":"2026-09-03T02:15:00","loc":"WP05","asset":"PANEL-203","type":"ACOUSTIC_INSPECTION","bat":43,"ok":true,"fail":null},{"s":7,"ts":"2026-09-03T02:17:30","loc":"WP15","asset":"HX-201","type":"ACOUSTIC_INSPECTION","bat":37,"ok":true,"fail":null},{"s":8,"ts":"2026-09-03T02:20:00","loc":"WP04","asset":"COMP-214","type":"NAVIGATION","bat":32,"ok":true,"fail":null},{"s":9,"ts":"2026-09-03T02:22:30","loc":"WP13","asset":"HX-219","type":"GAUGE_READING","bat":26,"ok":true,"fail":null},{"s":10,"ts":"2026-09-03T02:25:00","loc":"WP03","asset":"HX-208","type":"THERMAL_INSPECTION","bat":20,"ok":true,"fail":null}],"anoms":[],"flags":[],"brief":"Mission M005 was marked completed. All 10 actions succeeded. Battery went from 78% to 20%.","next":"no action needed.","ai":"Mission M005 was completed with all 10 actions succeeding. The battery started at 78% and ended at 20%. There were no anomalies or unusual readings."},{"id":"M006","v":"V1","status":"COMPLETED","start":"2026-09-03T10:00:00","end":"2026-09-03T10:31:00","dur":31,"b0":73,"b1":15,"acts":[{"s":1,"ts":"2026-09-03T10:03:06","loc":"WP05","asset":"HX-202","type":"NAVIGATION","bat":67,"ok":true,"fail":null},{"s":2,"ts":"2026-09-03T10:06:12","loc":"WP05","asset":"PANEL-203","type":"VISUAL_INSPECTION","bat":61,"ok":true,"fail":null},{"s":3,"ts":"2026-09-03T10:09:18","loc":"WP01","asset":"PANEL-215","type":"NAVIGATION","bat":56,"ok":true,"fail":null},{"s":4,"ts":"2026-09-03T10:12:24","loc":"WP03","asset":"HX-208","type":"VISUAL_INSPECTION","bat":50,"ok":true,"fail":null},{"s":5,"ts":"2026-09-03T10:15:30","loc":"WP01","asset":"PANEL-215","type":"ACOUSTIC_INSPECTION","bat":44,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":6,"ts":"2026-09-03T10:18:36","loc":"WP14","asset":"GAUGE-209","type":"VISUAL_INSPECTION","bat":38,"ok":true,"fail":null},{"s":7,"ts":"2026-09-03T10:21:42","loc":"WP03","asset":"HX-208","type":"VISUAL_INSPECTION","bat":32,"ok":false,"fail":"READING_UNRELIABLE"},{"s":8,"ts":"2026-09-03T10:24:48","loc":"WP14","asset":"PUMP-220","type":"VISUAL_INSPECTION","bat":27,"ok":true,"fail":null},{"s":9,"ts":"2026-09-03T10:27:54","loc":"WP11","asset":"HX-210","type":"THERMAL_INSPECTION","bat":21,"ok":true,"fail":null},{"s":10,"ts":"2026-09-03T10:31:00","loc":"WP09","asset":"PANEL-211","type":"GAUGE_READING","bat":15,"ok":false,"fail":"READING_UNRELIABLE"}],"anoms":[{"s":10,"sev":"CRITICAL","type":"GAUGE_OUT_OF_RANGE","asset":"PANEL-211","loc":"WP09","rev":true,"onOk":false},{"s":7,"sev":"MEDIUM","type":"VISUAL_DEFECT","asset":"HX-208","loc":"WP03","rev":false,"onOk":false},{"s":5,"sev":"MEDIUM","type":"ABNORMAL_VIBRATION","asset":"PANEL-215","loc":"WP01","rev":false,"onOk":false}],"flags":[],"brief":"Mission M006 was marked completed. 7 of 10 actions succeeded. Failed: acoustic inspection at Main Entrance (PANEL-215); visual inspection at Cooling Loop (HX-208); gauge reading at Turbine Hall South (PANEL-211). 3 anomalies recorded, 1 needing review. Battery went from 73% to 15%.","next":"check PANEL-211 at Turbine Hall South (critical gauge out of range).","ai":null},{"id":"M007","v":"V1","status":"COMPLETED","start":"2026-09-03T18:00:00","end":"2026-09-03T18:27:00","dur":27,"b0":79,"b1":25,"acts":[{"s":1,"ts":"2026-09-03T18:02:42","loc":"WP05","asset":"PANEL-203","type":"NAVIGATION","bat":74,"ok":false,"fail":"LOCALIZATION_FAILURE"},{"s":2,"ts":"2026-09-03T18:05:24","loc":"WP05","asset":"HX-202","type":"VISUAL_INSPECTION","bat":68,"ok":true,"fail":null},{"s":3,"ts":"2026-09-03T18:08:06","loc":"WP06","asset":"HX-217","type":"NAVIGATION","bat":63,"ok":true,"fail":null},{"s":4,"ts":"2026-09-03T18:10:48","loc":"WP07","asset":"PANEL-211","type":"VISUAL_INSPECTION","bat":57,"ok":true,"fail":null},{"s":5,"ts":"2026-09-03T18:13:30","loc":"WP14","asset":"PUMP-220","type":"NAVIGATION","bat":52,"ok":true,"fail":null},{"s":6,"ts":"2026-09-03T18:16:12","loc":"WP07","asset":"HX-219","type":"THERMAL_INSPECTION","bat":47,"ok":true,"fail":null},{"s":7,"ts":"2026-09-03T18:18:54","loc":"WP11","asset":"HX-210","type":"THERMAL_INSPECTION","bat":41,"ok":true,"fail":null},{"s":8,"ts":"2026-09-03T18:21:36","loc":"WP06","asset":"HX-217","type":"NAVIGATION","bat":36,"ok":true,"fail":null},{"s":9,"ts":"2026-09-03T18:24:18","loc":"WP09","asset":"PANEL-212","type":"VISUAL_INSPECTION","bat":30,"ok":true,"fail":null},{"s":10,"ts":"2026-09-03T18:27:00","loc":"WP05","asset":"PANEL-203","type":"ACOUSTIC_INSPECTION","bat":25,"ok":false,"fail":"SENSOR_TIMEOUT"}],"anoms":[{"s":1,"sev":"CRITICAL","type":"SIGNAL_DEGRADATION","asset":"PANEL-203","loc":"WP05","rev":true,"onOk":false},{"s":10,"sev":"LOW","type":"ABNORMAL_VIBRATION","asset":"PANEL-203","loc":"WP05","rev":false,"onOk":false}],"flags":[{"s":1,"asset":"PANEL-203","type":"LOCALIZATION_CONFIDENCE_PCT","val":49.2,"unit":"pct","norm":88.3}],"brief":"Mission M007 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (PANEL-203); acoustic inspection at Pipe Gallery (PANEL-203). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 79% to 25%.","next":"check PANEL-203 at Pipe Gallery (critical signal degradation).","ai":"Mission M007 was completed with 8 out of 10 actions succeeding. Two actions failed: navigation of PANEL-203 at Pipe Gallery due to localization failure, and acoustic inspection of PANEL-203 at Pipe Gallery due to sensor timeout. Critical signal degradation on PANEL-203 at Pipe Gallery needs operator review. Localization confidence on PANEL-203 was 49.2%, below normal levels."},{"id":"M008","v":"V1","status":"COMPLETED","start":"2026-09-04T02:00:00","end":"2026-09-04T02:26:00","dur":26,"b0":75,"b1":12,"acts":[{"s":1,"ts":"2026-09-04T02:02:36","loc":"WP05","asset":"HX-204","type":"NAVIGATION","bat":69,"ok":true,"fail":null},{"s":2,"ts":"2026-09-04T02:05:12","loc":"WP15","asset":"PANEL-218","type":"ACOUSTIC_INSPECTION","bat":62,"ok":true,"fail":null},{"s":3,"ts":"2026-09-04T02:07:48","loc":"WP06","asset":"HX-217","type":"NAVIGATION","bat":56,"ok":true,"fail":null},{"s":4,"ts":"2026-09-04T02:10:24","loc":"WP05","asset":"PANEL-203","type":"VISUAL_INSPECTION","bat":50,"ok":true,"fail":null},{"s":5,"ts":"2026-09-04T02:13:00","loc":"WP07","asset":"HX-216","type":"NAVIGATION","bat":44,"ok":true,"fail":null},{"s":6,"ts":"2026-09-04T02:15:36","loc":"WP01","asset":"PANEL-215","type":"ACOUSTIC_INSPECTION","bat":37,"ok":false,"fail":"READING_UNRELIABLE"},{"s":7,"ts":"2026-09-04T02:18:12","loc":"WP01","asset":"PANEL-215","type":"GAUGE_READING","bat":31,"ok":true,"fail":null},{"s":8,"ts":"2026-09-04T02:20:48","loc":"WP11","asset":"HX-210","type":"VISUAL_INSPECTION","bat":25,"ok":true,"fail":null},{"s":9,"ts":"2026-09-04T02:23:24","loc":"WP02","asset":"PUMP-205","type":"THERMAL_INSPECTION","bat":18,"ok":false,"fail":"READING_UNRELIABLE"},{"s":10,"ts":"2026-09-04T02:26:00","loc":"WP04","asset":"COMP-214","type":"GAUGE_READING","bat":12,"ok":false,"fail":"READING_UNRELIABLE"}],"anoms":[{"s":6,"sev":"MEDIUM","type":"ABNORMAL_VIBRATION","asset":"PANEL-215","loc":"WP01","rev":false,"onOk":false}],"flags":[],"brief":"Mission M008 was marked completed. 7 of 10 actions succeeded. Failed: acoustic inspection at Main Entrance (PANEL-215); thermal inspection at Electrical Room (PUMP-205); gauge reading at Pump Bay (COMP-214). 1 anomaly recorded, 0 needing review. Battery went from 75% to 12%.","next":"review why Main Entrance failed.","ai":null},{"id":"M009","v":"V1","status":"COMPLETED","start":"2026-09-04T10:00:00","end":"2026-09-04T10:25:00","dur":25,"b0":68,"b1":26,"acts":[{"s":1,"ts":"2026-09-04T10:02:30","loc":"WP05","asset":"HX-201","type":"NAVIGATION","bat":64,"ok":true,"fail":null},{"s":2,"ts":"2026-09-04T10:05:00","loc":"WP01","asset":"PANEL-215","type":"ACOUSTIC_INSPECTION","bat":60,"ok":true,"fail":null},{"s":3,"ts":"2026-09-04T10:07:30","loc":"WP15","asset":"HX-216","type":"GAUGE_READING","bat":55,"ok":true,"fail":null},{"s":4,"ts":"2026-09-04T10:10:00","loc":"WP06","asset":"HX-217","type":"THERMAL_INSPECTION","bat":51,"ok":true,"fail":null},{"s":5,"ts":"2026-09-04T10:12:30","loc":"WP11","asset":"HX-210","type":"VISUAL_INSPECTION","bat":47,"ok":true,"fail":null},{"s":6,"ts":"2026-09-04T10:15:00","loc":"WP05","asset":"HX-204","type":"VISUAL_INSPECTION","bat":43,"ok":false,"fail":"TARGET_NOT_DETECTED"},{"s":7,"ts":"2026-09-04T10:17:30","loc":"WP05","asset":"HX-202","type":"ACOUSTIC_INSPECTION","bat":39,"ok":true,"fail":null},{"s":8,"ts":"2026-09-04T10:20:00","loc":"WP11","asset":"HX-210","type":"NAVIGATION","bat":34,"ok":true,"fail":null},{"s":9,"ts":"2026-09-04T10:22:30","loc":"WP09","asset":"PANEL-212","type":"ACOUSTIC_INSPECTION","bat":30,"ok":false,"fail":"SIGNAL_NOISE"},{"s":10,"ts":"2026-09-04T10:25:00","loc":"WP02","asset":"PANEL-218","type":"NAVIGATION","bat":26,"ok":false,"fail":"COMMUNICATION_LOSS"}],"anoms":[{"s":5,"sev":"HIGH","type":"VISUAL_DEFECT","asset":"HX-210","loc":"WP11","rev":true,"onOk":true}],"flags":[{"s":10,"asset":"PANEL-218","type":"LOCALIZATION_CONFIDENCE_PCT","val":55.6,"unit":"pct","norm":88.3}],"brief":"Mission M009 was marked completed. 7 of 10 actions succeeded. Failed: visual inspection at Pipe Gallery (HX-204); acoustic inspection at Turbine Hall South (PANEL-212); navigation at Electrical Room (PANEL-218). 1 anomaly recorded, 1 needing review, 1 on an action that reported success. 1 reading fell outside the normal range for its type. Battery went from 68% to 26%.","next":"check HX-210 at Battery Room (high visual defect).","ai":"Mission M009 was completed with 7 out of 10 actions succeeding. Three actions failed: a visual inspection of HX-204 at Pipe Gallery, an acoustic inspection of PANEL-212 at Turbine Hall South, and a navigation of PANEL-218 at Electrical Room. The battery started at 68% and ended at 26%. An unusual reading was noted on PANEL-218's localization confidence at 55.6% (normal is about 88.3%). A high visual defect on HX-210 at Battery Room was also recorded, needing operator review."},{"id":"M010","v":"V1","status":"COMPLETED","start":"2026-09-04T18:00:00","end":"2026-09-04T18:33:00","dur":33,"b0":76,"b1":14,"acts":[{"s":1,"ts":"2026-09-04T18:03:18","loc":"WP05","asset":"HX-202","type":"NAVIGATION","bat":70,"ok":false,"fail":"LOCALIZATION_FAILURE"},{"s":2,"ts":"2026-09-04T18:06:36","loc":"WP15","asset":"PUMP-220","type":"NAVIGATION","bat":64,"ok":true,"fail":null},{"s":3,"ts":"2026-09-04T18:09:54","loc":"WP04","asset":"COMP-214","type":"ACOUSTIC_INSPECTION","bat":57,"ok":false,"fail":"READING_UNRELIABLE"},{"s":4,"ts":"2026-09-04T18:13:12","loc":"WP04","asset":"COMP-214","type":"GAUGE_READING","bat":51,"ok":true,"fail":null},{"s":5,"ts":"2026-09-04T18:16:30","loc":"WP09","asset":"PANEL-212","type":"THERMAL_INSPECTION","bat":45,"ok":true,"fail":null},{"s":6,"ts":"2026-09-04T18:19:48","loc":"WP10","asset":"PUMP-205","type":"VISUAL_INSPECTION","bat":39,"ok":true,"fail":null},{"s":7,"ts":"2026-09-04T18:23:06","loc":"WP12","asset":"VALVE-207","type":"VISUAL_INSPECTION","bat":33,"ok":true,"fail":null},{"s":8,"ts":"2026-09-04T18:26:24","loc":"WP01","asset":"PANEL-215","type":"THERMAL_INSPECTION","bat":26,"ok":true,"fail":null},{"s":9,"ts":"2026-09-04T18:29:42","loc":"WP03","asset":"HX-208","type":"NAVIGATION","bat":20,"ok":false,"fail":"PATH_BLOCKED"},{"s":10,"ts":"2026-09-04T18:33:00","loc":"WP03","asset":"HX-208","type":"GAUGE_READING","bat":14,"ok":true,"fail":null}],"anoms":[],"flags":[{"s":9,"asset":"HX-208","type":"LOCALIZATION_CONFIDENCE_PCT","val":37.5,"unit":"pct","norm":88.3},{"s":1,"asset":"HX-202","type":"LOCALIZATION_CONFIDENCE_PCT","val":67.1,"unit":"pct","norm":88.3}],"brief":"Mission M010 was marked completed. 7 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-202); acoustic inspection at Pump Bay (COMP-214); navigation at Cooling Loop (HX-208). 2 readings fell outside the normal range for its type. Battery went from 76% to 14%.","next":"review why Pipe Gallery failed.","ai":null},{"id":"M011","v":"V1","status":"COMPLETED","start":"2026-09-05T02:00:00","end":"2026-09-05T02:33:00","dur":33,"b0":80,"b1":18,"acts":[{"s":1,"ts":"2026-09-05T02:03:18","loc":"WP05","asset":"PANEL-203","type":"NAVIGATION","bat":74,"ok":true,"fail":null},{"s":2,"ts":"2026-09-05T02:06:36","loc":"WP05","asset":"HX-202","type":"ACOUSTIC_INSPECTION","bat":68,"ok":true,"fail":null},{"s":3,"ts":"2026-09-05T02:09:54","loc":"WP11","asset":"HX-210","type":"VISUAL_INSPECTION","bat":61,"ok":true,"fail":null},{"s":4,"ts":"2026-09-05T02:13:12","loc":"WP01","asset":"PANEL-215","type":"VISUAL_INSPECTION","bat":55,"ok":true,"fail":null},{"s":5,"ts":"2026-09-05T02:16:30","loc":"WP14","asset":"PUMP-220","type":"GAUGE_READING","bat":49,"ok":true,"fail":null},{"s":6,"ts":"2026-09-05T02:19:48","loc":"WP03","asset":"HX-208","type":"NAVIGATION","bat":43,"ok":true,"fail":null},{"s":7,"ts":"2026-09-05T02:23:06","loc":"WP04","asset":"COMP-214","type":"THERMAL_INSPECTION","bat":37,"ok":true,"fail":null},{"s":8,"ts":"2026-09-05T02:26:24","loc":"WP04","asset":"COMP-214","type":"VISUAL_INSPECTION","bat":30,"ok":true,"fail":null},{"s":9,"ts":"2026-09-05T02:29:42","loc":"WP08","asset":"PANEL-212","type":"GAUGE_READING","bat":24,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":10,"ts":"2026-09-05T02:33:00","loc":"WP15","asset":"PANEL-218","type":"ACOUSTIC_INSPECTION","bat":18,"ok":false,"fail":"READING_UNRELIABLE"}],"anoms":[],"flags":[],"brief":"Mission M011 was marked completed. 8 of 10 actions succeeded. Failed: gauge reading at Turbine Hall North (PANEL-212); acoustic inspection at Inspection Dock (PANEL-218). Battery went from 80% to 18%.","next":"review why Turbine Hall North failed.","ai":null},{"id":"M012","v":"V1","status":"COMPLETED","start":"2026-09-05T10:00:00","end":"2026-09-05T10:27:00","dur":27,"b0":69,"b1":13,"acts":[{"s":1,"ts":"2026-09-05T10:02:42","loc":"WP05","asset":"HX-204","type":"NAVIGATION","bat":63,"ok":true,"fail":null},{"s":2,"ts":"2026-09-05T10:05:24","loc":"WP12","asset":"VALVE-207","type":"VISUAL_INSPECTION","bat":58,"ok":true,"fail":null},{"s":3,"ts":"2026-09-05T10:08:06","loc":"WP04","asset":"COMP-214","type":"VISUAL_INSPECTION","bat":52,"ok":true,"fail":null},{"s":4,"ts":"2026-09-05T10:10:48","loc":"WP13","asset":"HX-216","type":"THERMAL_INSPECTION","bat":47,"ok":true,"fail":null},{"s":5,"ts":"2026-09-05T10:13:30","loc":"WP08","asset":"HX-217","type":"ACOUSTIC_INSPECTION","bat":41,"ok":true,"fail":null},{"s":6,"ts":"2026-09-05T10:16:12","loc":"WP08","asset":"PUMP-205","type":"VISUAL_INSPECTION","bat":35,"ok":true,"fail":null},{"s":7,"ts":"2026-09-05T10:18:54","loc":"WP06","asset":"HX-217","type":"THERMAL_INSPECTION","bat":30,"ok":true,"fail":null},{"s":8,"ts":"2026-09-05T10:21:36","loc":"WP15","asset":"PANEL-218","type":"THERMAL_INSPECTION","bat":24,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":9,"ts":"2026-09-05T10:24:18","loc":"WP08","asset":"PANEL-215","type":"THERMAL_INSPECTION","bat":19,"ok":false,"fail":"READING_UNRELIABLE"},{"s":10,"ts":"2026-09-05T10:27:00","loc":"WP02","asset":"GAUGE-209","type":"THERMAL_INSPECTION","bat":13,"ok":false,"fail":"READING_UNRELIABLE"}],"anoms":[{"s":8,"sev":"MEDIUM","type":"ABNORMAL_TEMPERATURE","asset":"PANEL-218","loc":"WP15","rev":false,"onOk":false},{"s":9,"sev":"MEDIUM","type":"ABNORMAL_TEMPERATURE","asset":"PANEL-215","loc":"WP08","rev":false,"onOk":false},{"s":10,"sev":"LOW","type":"ABNORMAL_TEMPERATURE","asset":"GAUGE-209","loc":"WP02","rev":false,"onOk":false}],"flags":[],"brief":"Mission M012 was marked completed. 7 of 10 actions succeeded. Failed: thermal inspection at Inspection Dock (PANEL-218); thermal inspection at Turbine Hall North (PANEL-215); thermal inspection at Electrical Room (GAUGE-209). 3 anomalies recorded, 0 needing review. Battery went from 69% to 13%.","next":"review why Inspection Dock failed.","ai":"Mission M012 was completed with 7 out of 10 actions succeeding. Three actions failed: thermal inspections of PANEL-218, PANEL-215, and GAUGE-209 at different locations. The battery started at 69% and ended at 13%. Medium abnormal temperatures were recorded on PANEL-218 and PANEL-215 at Inspection Dock and Turbine Hall North, respectively, with no review needed."},{"id":"M013","v":"V1","status":"COMPLETED","start":"2026-09-05T18:00:00","end":"2026-09-05T18:32:00","dur":32,"b0":72,"b1":23,"acts":[{"s":1,"ts":"2026-09-05T18:03:12","loc":"WP05","asset":"HX-201","type":"NAVIGATION","bat":67,"ok":false,"fail":"LOCALIZATION_FAILURE"},{"s":2,"ts":"2026-09-05T18:06:24","loc":"WP13","asset":"HX-219","type":"GAUGE_READING","bat":62,"ok":true,"fail":null},{"s":3,"ts":"2026-09-05T18:09:36","loc":"WP09","asset":"PANEL-211","type":"VISUAL_INSPECTION","bat":57,"ok":true,"fail":null},{"s":4,"ts":"2026-09-05T18:12:48","loc":"WP02","asset":"HX-213","type":"VISUAL_INSPECTION","bat":52,"ok":true,"fail":null},{"s":5,"ts":"2026-09-05T18:16:00","loc":"WP01","asset":"PANEL-215","type":"GAUGE_READING","bat":48,"ok":true,"fail":null},{"s":6,"ts":"2026-09-05T18:19:12","loc":"WP09","asset":"PANEL-211","type":"GAUGE_READING","bat":43,"ok":true,"fail":null},{"s":7,"ts":"2026-09-05T18:22:24","loc":"WP05","asset":"HX-204","type":"THERMAL_INSPECTION","bat":38,"ok":false,"fail":"TARGET_NOT_DETECTED"},{"s":8,"ts":"2026-09-05T18:25:36","loc":"WP12","asset":"VALVE-207","type":"THERMAL_INSPECTION","bat":33,"ok":true,"fail":null},{"s":9,"ts":"2026-09-05T18:28:48","loc":"WP07","asset":"HX-202","type":"ACOUSTIC_INSPECTION","bat":28,"ok":true,"fail":null},{"s":10,"ts":"2026-09-05T18:32:00","loc":"WP13","asset":"HX-213","type":"ACOUSTIC_INSPECTION","bat":23,"ok":true,"fail":null}],"anoms":[{"s":1,"sev":"LOW","type":"SIGNAL_DEGRADATION","asset":"HX-201","loc":"WP05","rev":false,"onOk":false}],"flags":[{"s":1,"asset":"HX-201","type":"LOCALIZATION_CONFIDENCE_PCT","val":52.5,"unit":"pct","norm":88.3}],"brief":"Mission M013 was marked completed. 8 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-201); thermal inspection at Pipe Gallery (HX-204). 1 anomaly recorded, 0 needing review. 1 reading fell outside the normal range for its type. Battery went from 72% to 23%.","next":"review why Pipe Gallery failed.","ai":null},{"id":"M014","v":"V1","status":"COMPLETED","start":"2026-09-06T02:00:00","end":"2026-09-06T02:26:00","dur":26,"b0":68,"b1":22,"acts":[{"s":1,"ts":"2026-09-06T02:02:36","loc":"WP05","asset":"HX-202","type":"NAVIGATION","bat":63,"ok":true,"fail":null},{"s":2,"ts":"2026-09-06T02:05:12","loc":"WP09","asset":"PANEL-212","type":"GAUGE_READING","bat":59,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":3,"ts":"2026-09-06T02:07:48","loc":"WP06","asset":"HX-217","type":"GAUGE_READING","bat":54,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":4,"ts":"2026-09-06T02:10:24","loc":"WP06","asset":"HX-217","type":"NAVIGATION","bat":50,"ok":false,"fail":"LOCALIZATION_FAILURE"},{"s":5,"ts":"2026-09-06T02:13:00","loc":"WP13","asset":"HX-213","type":"ACOUSTIC_INSPECTION","bat":45,"ok":true,"fail":null},{"s":6,"ts":"2026-09-06T02:15:36","loc":"WP07","asset":"HX-204","type":"GAUGE_READING","bat":40,"ok":true,"fail":null},{"s":7,"ts":"2026-09-06T02:18:12","loc":"WP01","asset":"PANEL-215","type":"VISUAL_INSPECTION","bat":36,"ok":true,"fail":null},{"s":8,"ts":"2026-09-06T02:20:48","loc":"WP09","asset":"PANEL-212","type":"NAVIGATION","bat":31,"ok":true,"fail":null},{"s":9,"ts":"2026-09-06T02:23:24","loc":"WP15","asset":"HX-202","type":"VISUAL_INSPECTION","bat":27,"ok":true,"fail":null},{"s":10,"ts":"2026-09-06T02:26:00","loc":"WP02","asset":"PANEL-215","type":"ACOUSTIC_INSPECTION","bat":22,"ok":true,"fail":null}],"anoms":[{"s":3,"sev":"HIGH","type":"GAUGE_OUT_OF_RANGE","asset":"HX-217","loc":"WP06","rev":true,"onOk":false},{"s":2,"sev":"HIGH","type":"GAUGE_OUT_OF_RANGE","asset":"PANEL-212","loc":"WP09","rev":true,"onOk":false}],"flags":[{"s":4,"asset":"HX-217","type":"LOCALIZATION_CONFIDENCE_PCT","val":48.8,"unit":"pct","norm":88.3}],"brief":"Mission M014 was marked completed. 7 of 10 actions succeeded. Failed: gauge reading at Turbine Hall South (PANEL-212); gauge reading at Compressor Area (HX-217); navigation at Compressor Area (HX-217). 2 anomalies recorded, 2 needing review. 1 reading fell outside the normal range for its type. Battery went from 68% to 22%.","next":"check HX-217 at Compressor Area (high gauge out of range).","ai":"Mission M014 was completed with 7 of 10 actions succeeding. Three actions failed: a gauge reading of PANEL-212 at Turbine Hall South had a sensor timeout, a gauge reading of HX-217 at Compressor Area had a sensor timeout, and navigation of HX-217 at Compressor Area had a localization failure. Two anomalies were recorded, both needing operator review: high gauges out of range on HX-217 and PANEL-212. Localization confidence on HX-217 was 48.8%, below normal."},{"id":"M015","v":"V1","status":"COMPLETED","start":"2026-09-06T10:00:00","end":"2026-09-06T10:34:00","dur":34,"b0":77,"b1":27,"acts":[{"s":1,"ts":"2026-09-06T10:03:24","loc":"WP05","asset":"PANEL-203","type":"NAVIGATION","bat":72,"ok":false,"fail":"LOCALIZATION_FAILURE"},{"s":2,"ts":"2026-09-06T10:06:48","loc":"WP11","asset":"HX-210","type":"VISUAL_INSPECTION","bat":67,"ok":true,"fail":null},{"s":3,"ts":"2026-09-06T10:10:12","loc":"WP05","asset":"HX-202","type":"VISUAL_INSPECTION","bat":62,"ok":true,"fail":null},{"s":4,"ts":"2026-09-06T10:13:36","loc":"WP08","asset":"GAUGE-209","type":"VISUAL_INSPECTION","bat":57,"ok":true,"fail":null},{"s":5,"ts":"2026-09-06T10:17:00","loc":"WP03","asset":"HX-208","type":"ACOUSTIC_INSPECTION","bat":52,"ok":true,"fail":null},{"s":6,"ts":"2026-09-06T10:20:24","loc":"WP04","asset":"COMP-214","type":"ACOUSTIC_INSPECTION","bat":47,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":7,"ts":"2026-09-06T10:23:48","loc":"WP07","asset":"HX-213","type":"ACOUSTIC_INSPECTION","bat":42,"ok":false,"fail":"SIGNAL_NOISE"},{"s":8,"ts":"2026-09-06T10:27:12","loc":"WP03","asset":"HX-208","type":"VISUAL_INSPECTION","bat":37,"ok":true,"fail":null},{"s":9,"ts":"2026-09-06T10:30:36","loc":"WP13","asset":"HX-216","type":"THERMAL_INSPECTION","bat":32,"ok":true,"fail":null},{"s":10,"ts":"2026-09-06T10:34:00","loc":"WP08","asset":"PANEL-203","type":"VISUAL_INSPECTION","bat":27,"ok":true,"fail":null}],"anoms":[{"s":7,"sev":"HIGH","type":"ABNORMAL_VIBRATION","asset":"HX-213","loc":"WP07","rev":true,"onOk":false},{"s":2,"sev":"MEDIUM","type":"VISUAL_DEFECT","asset":"HX-210","loc":"WP11","rev":false,"onOk":true},{"s":1,"sev":"LOW","type":"SIGNAL_DEGRADATION","asset":"PANEL-203","loc":"WP05","rev":false,"onOk":false},{"s":6,"sev":"LOW","type":"ABNORMAL_VIBRATION","asset":"COMP-214","loc":"WP04","rev":false,"onOk":false}],"flags":[{"s":1,"asset":"PANEL-203","type":"LOCALIZATION_CONFIDENCE_PCT","val":59.5,"unit":"pct","norm":88.3},{"s":9,"asset":"HX-216","type":"TEMPERATURE_C","val":39.8,"unit":"C","norm":63.8}],"brief":"Mission M015 was marked completed. 7 of 10 actions succeeded. Failed: navigation at Pipe Gallery (PANEL-203); acoustic inspection at Pump Bay (COMP-214); acoustic inspection at Control Room Corridor (HX-213). 4 anomalies recorded, 1 needing review, 1 on an action that reported success. 2 readings fell outside the normal range for its type. Battery went from 77% to 27%.","next":"check HX-213 at Control Room Corridor (high abnormal vibration).","ai":null},{"id":"M016","v":"V1","status":"COMPLETED","start":"2026-09-06T18:00:00","end":"2026-09-06T18:26:00","dur":26,"b0":76,"b1":19,"acts":[{"s":1,"ts":"2026-09-06T18:02:36","loc":"WP05","asset":"HX-204","type":"NAVIGATION","bat":70,"ok":true,"fail":null},{"s":2,"ts":"2026-09-06T18:05:12","loc":"WP11","asset":"HX-210","type":"VISUAL_INSPECTION","bat":65,"ok":true,"fail":null},{"s":3,"ts":"2026-09-06T18:07:48","loc":"WP01","asset":"PANEL-215","type":"VISUAL_INSPECTION","bat":59,"ok":true,"fail":null},{"s":4,"ts":"2026-09-06T18:10:24","loc":"WP07","asset":"HX-219","type":"THERMAL_INSPECTION","bat":53,"ok":true,"fail":null},{"s":5,"ts":"2026-09-06T18:13:00","loc":"WP01","asset":"PANEL-215","type":"VISUAL_INSPECTION","bat":48,"ok":true,"fail":null},{"s":6,"ts":"2026-09-06T18:15:36","loc":"WP05","asset":"HX-202","type":"THERMAL_INSPECTION","bat":42,"ok":true,"fail":null},{"s":7,"ts":"2026-09-06T18:18:12","loc":"WP06","asset":"HX-217","type":"GAUGE_READING","bat":36,"ok":true,"fail":null},{"s":8,"ts":"2026-09-06T18:20:48","loc":"WP11","asset":"HX-210","type":"GAUGE_READING","bat":30,"ok":false,"fail":"READING_UNRELIABLE"},{"s":9,"ts":"2026-09-06T18:23:24","loc":"WP15","asset":"HX-216","type":"VISUAL_INSPECTION","bat":25,"ok":false,"fail":"TARGET_NOT_DETECTED"},{"s":10,"ts":"2026-09-06T18:26:00","loc":"WP09","asset":"PANEL-212","type":"VISUAL_INSPECTION","bat":19,"ok":false,"fail":"READING_UNRELIABLE"}],"anoms":[{"s":10,"sev":"HIGH","type":"VISUAL_DEFECT","asset":"PANEL-212","loc":"WP09","rev":true,"onOk":false}],"flags":[],"brief":"Mission M016 was marked completed. 7 of 10 actions succeeded. Failed: gauge reading at Battery Room (HX-210); visual inspection at Inspection Dock (HX-216); visual inspection at Turbine Hall South (PANEL-212). 1 anomaly recorded, 1 needing review. Battery went from 76% to 19%.","next":"check PANEL-212 at Turbine Hall South (high visual defect).","ai":"Mission M016 was completed with 7 out of 10 actions succeeding. Three actions failed: a gauge reading of HX-210 at Battery Room was unreliable, a target was not detected at HX-216 at Inspection Dock, and a reading was unreliable at PANEL-212 at Turbine Hall South. A high visual defect on PANEL-212 at Turbine Hall South requires operator review. Battery levels dropped from 76% to 19%."},{"id":"M017","v":"V1","status":"FAILED","start":"2026-09-07T02:00:00","end":"2026-09-07T02:31:00","dur":31,"b0":77,"b1":16,"acts":[{"s":1,"ts":"2026-09-07T02:03:06","loc":"WP05","asset":"HX-201","type":"NAVIGATION","bat":71,"ok":true,"fail":null},{"s":2,"ts":"2026-09-07T02:06:12","loc":"WP01","asset":"PANEL-215","type":"ACOUSTIC_INSPECTION","bat":65,"ok":true,"fail":null},{"s":3,"ts":"2026-09-07T02:09:18","loc":"WP08","asset":"PANEL-203","type":"NAVIGATION","bat":59,"ok":true,"fail":null},{"s":4,"ts":"2026-09-07T02:12:24","loc":"WP12","asset":"PANEL-218","type":"THERMAL_INSPECTION","bat":53,"ok":true,"fail":null},{"s":5,"ts":"2026-09-07T02:15:30","loc":"WP08","asset":"HX-210","type":"NAVIGATION","bat":46,"ok":true,"fail":null},{"s":6,"ts":"2026-09-07T02:18:36","loc":"WP09","asset":"PANEL-211","type":"VISUAL_INSPECTION","bat":40,"ok":false,"fail":"TARGET_NOT_DETECTED"},{"s":7,"ts":"2026-09-07T02:21:42","loc":"WP04","asset":"COMP-214","type":"VISUAL_INSPECTION","bat":34,"ok":true,"fail":null},{"s":8,"ts":"2026-09-07T02:24:48","loc":"WP03","asset":"HX-208","type":"GAUGE_READING","bat":28,"ok":false,"fail":"TARGET_NOT_DETECTED"},{"s":9,"ts":"2026-09-07T02:27:54","loc":"WP09","asset":"PANEL-212","type":"NAVIGATION","bat":22,"ok":false,"fail":"COMMUNICATION_LOSS"},{"s":10,"ts":"2026-09-07T02:31:00","loc":"WP12","asset":"PANEL-218","type":"THERMAL_INSPECTION","bat":16,"ok":true,"fail":null}],"anoms":[{"s":9,"sev":"CRITICAL","type":"NAVIGATION_OBSTRUCTION","asset":"PANEL-212","loc":"WP09","rev":true,"onOk":false},{"s":8,"sev":"LOW","type":"GAUGE_OUT_OF_RANGE","asset":"HX-208","loc":"WP03","rev":false,"onOk":false}],"flags":[{"s":9,"asset":"PANEL-212","type":"LOCALIZATION_CONFIDENCE_PCT","val":64.7,"unit":"pct","norm":88.3}],"brief":"Mission M017 was marked failed. 7 of 10 actions succeeded. Failed: visual inspection at Turbine Hall South (PANEL-211); gauge reading at Cooling Loop (HX-208); navigation at Turbine Hall South (PANEL-212). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 77% to 16%.","next":"check PANEL-212 at Turbine Hall South (critical navigation obstruction).","ai":null},{"id":"M018","v":"V1","status":"COMPLETED","start":"2026-09-07T10:00:00","end":"2026-09-07T10:33:00","dur":33,"b0":82,"b1":28,"acts":[{"s":1,"ts":"2026-09-07T10:03:18","loc":"WP05","asset":"HX-202","type":"NAVIGATION","bat":77,"ok":true,"fail":null},{"s":2,"ts":"2026-09-07T10:06:36","loc":"WP04","asset":"COMP-214","type":"NAVIGATION","bat":71,"ok":true,"fail":null},{"s":3,"ts":"2026-09-07T10:09:54","loc":"WP08","asset":"HX-213","type":"ACOUSTIC_INSPECTION","bat":66,"ok":true,"fail":null},{"s":4,"ts":"2026-09-07T10:13:12","loc":"WP05","asset":"HX-201","type":"GAUGE_READING","bat":60,"ok":true,"fail":null},{"s":5,"ts":"2026-09-07T10:16:30","loc":"WP05","asset":"HX-204","type":"VISUAL_INSPECTION","bat":55,"ok":true,"fail":null},{"s":6,"ts":"2026-09-07T10:19:48","loc":"WP15","asset":"HX-217","type":"THERMAL_INSPECTION","bat":50,"ok":true,"fail":null},{"s":7,"ts":"2026-09-07T10:23:06","loc":"WP09","asset":"PANEL-212","type":"GAUGE_READING","bat":44,"ok":true,"fail":null},{"s":8,"ts":"2026-09-07T10:26:24","loc":"WP09","asset":"PANEL-211","type":"VISUAL_INSPECTION","bat":39,"ok":true,"fail":null},{"s":9,"ts":"2026-09-07T10:29:42","loc":"WP10","asset":"PUMP-205","type":"NAVIGATION","bat":33,"ok":true,"fail":null},{"s":10,"ts":"2026-09-07T10:33:00","loc":"WP14","asset":"PUMP-220","type":"NAVIGATION","bat":28,"ok":true,"fail":null}],"anoms":[],"flags":[],"brief":"Mission M018 was marked completed. All 10 actions succeeded. Battery went from 82% to 28%.","next":"no action needed.","ai":"Mission M018 was completed with all 10 actions succeeding. The battery started at 82% and ended at 28%. There were no anomalies or unusual readings."},{"id":"M019","v":"V2","status":"COMPLETED","start":"2026-09-07T18:00:00","end":"2026-09-07T18:22:00","dur":22,"b0":84,"b1":65,"acts":[{"s":1,"ts":"2026-09-07T18:02:12","loc":"WP05","asset":"PANEL-203","type":"NAVIGATION","bat":82,"ok":true,"fail":null},{"s":2,"ts":"2026-09-07T18:04:24","loc":"WP07","asset":"HX-217","type":"VISUAL_INSPECTION","bat":80,"ok":true,"fail":null},{"s":3,"ts":"2026-09-07T18:06:36","loc":"WP02","asset":"HX-204","type":"VISUAL_INSPECTION","bat":78,"ok":true,"fail":null},{"s":4,"ts":"2026-09-07T18:08:48","loc":"WP06","asset":"HX-217","type":"THERMAL_INSPECTION","bat":76,"ok":true,"fail":null},{"s":5,"ts":"2026-09-07T18:11:00","loc":"WP02","asset":"PANEL-203","type":"GAUGE_READING","bat":74,"ok":true,"fail":null},{"s":6,"ts":"2026-09-07T18:13:12","loc":"WP11","asset":"HX-210","type":"VISUAL_INSPECTION","bat":73,"ok":true,"fail":null},{"s":7,"ts":"2026-09-07T18:15:24","loc":"WP14","asset":"PUMP-220","type":"NAVIGATION","bat":71,"ok":true,"fail":null},{"s":8,"ts":"2026-09-07T18:17:36","loc":"WP02","asset":"PANEL-203","type":"THERMAL_INSPECTION","bat":69,"ok":true,"fail":null},{"s":9,"ts":"2026-09-07T18:19:48","loc":"WP14","asset":"MOTOR-206","type":"NAVIGATION","bat":67,"ok":true,"fail":null},{"s":10,"ts":"2026-09-07T18:22:00","loc":"WP13","asset":"HX-213","type":"VISUAL_INSPECTION","bat":65,"ok":true,"fail":null}],"anoms":[],"flags":[],"brief":"Mission M019 was marked completed. All 10 actions succeeded. Battery went from 84% to 65%.","next":"no action needed.","ai":"Mission M019 was completed with all 10 actions succeeding. The battery started at 84% and ended at 65%. There were no anomalies or unusual readings."},{"id":"M020","v":"V2","status":"COMPLETED","start":"2026-09-08T02:00:00","end":"2026-09-08T02:20:00","dur":20,"b0":86,"b1":70,"acts":[{"s":1,"ts":"2026-09-08T02:02:00","loc":"WP05","asset":"HX-204","type":"NAVIGATION","bat":84,"ok":false,"fail":"LOCALIZATION_FAILURE"},{"s":2,"ts":"2026-09-08T02:04:00","loc":"WP06","asset":"HX-217","type":"NAVIGATION","bat":83,"ok":true,"fail":null},{"s":3,"ts":"2026-09-08T02:06:00","loc":"WP11","asset":"HX-210","type":"THERMAL_INSPECTION","bat":81,"ok":true,"fail":null},{"s":4,"ts":"2026-09-08T02:08:00","loc":"WP07","asset":"HX-204","type":"THERMAL_INSPECTION","bat":80,"ok":true,"fail":null},{"s":5,"ts":"2026-09-08T02:10:00","loc":"WP10","asset":"PUMP-205","type":"THERMAL_INSPECTION","bat":78,"ok":true,"fail":null},{"s":6,"ts":"2026-09-08T02:12:00","loc":"WP12","asset":"VALVE-207","type":"THERMAL_INSPECTION","bat":76,"ok":true,"fail":null},{"s":7,"ts":"2026-09-08T02:14:00","loc":"WP15","asset":"PANEL-203","type":"ACOUSTIC_INSPECTION","bat":75,"ok":true,"fail":null},{"s":8,"ts":"2026-09-08T02:16:00","loc":"WP07","asset":"PUMP-220","type":"NAVIGATION","bat":73,"ok":true,"fail":null},{"s":9,"ts":"2026-09-08T02:18:00","loc":"WP09","asset":"PANEL-211","type":"ACOUSTIC_INSPECTION","bat":72,"ok":true,"fail":null},{"s":10,"ts":"2026-09-08T02:20:00","loc":"WP10","asset":"PUMP-205","type":"ACOUSTIC_INSPECTION","bat":70,"ok":true,"fail":null}],"anoms":[{"s":4,"sev":"CRITICAL","type":"ABNORMAL_TEMPERATURE","asset":"HX-204","loc":"WP07","rev":true,"onOk":true},{"s":10,"sev":"MEDIUM","type":"ABNORMAL_VIBRATION","asset":"PUMP-205","loc":"WP10","rev":false,"onOk":true},{"s":1,"sev":"MEDIUM","type":"NAVIGATION_OBSTRUCTION","asset":"HX-204","loc":"WP05","rev":false,"onOk":false}],"flags":[{"s":1,"asset":"HX-204","type":"LOCALIZATION_CONFIDENCE_PCT","val":53.7,"unit":"pct","norm":88.3},{"s":4,"asset":"HX-204","type":"TEMPERATURE_C","val":41.4,"unit":"C","norm":63.8}],"brief":"Mission M020 was marked completed. 9 of 10 actions succeeded. Failed: navigation at Pipe Gallery (HX-204). 3 anomalies recorded, 1 needing review, 2 on an action that reported success. 2 readings fell outside the normal range for its type. Battery went from 86% to 70%.","next":"check HX-204 at Control Room Corridor (critical abnormal temperature).","ai":null},{"id":"M021","v":"V2","status":"COMPLETED","start":"2026-09-08T10:00:00","end":"2026-09-08T10:22:00","dur":22,"b0":98,"b1":65,"acts":[{"s":1,"ts":"2026-09-08T10:02:12","loc":"WP05","asset":"HX-201","type":"NAVIGATION","bat":95,"ok":true,"fail":null},{"s":2,"ts":"2026-09-08T10:04:24","loc":"WP05","asset":"PANEL-203","type":"VISUAL_INSPECTION","bat":91,"ok":true,"fail":null},{"s":3,"ts":"2026-09-08T10:06:36","loc":"WP15","asset":"VALVE-207","type":"ACOUSTIC_INSPECTION","bat":88,"ok":false,"fail":"READING_UNRELIABLE"},{"s":4,"ts":"2026-09-08T10:08:48","loc":"WP12","asset":"VALVE-207","type":"GAUGE_READING","bat":85,"ok":true,"fail":null},{"s":5,"ts":"2026-09-08T10:11:00","loc":"WP10","asset":"PUMP-205","type":"ACOUSTIC_INSPECTION","bat":82,"ok":true,"fail":null},{"s":6,"ts":"2026-09-08T10:13:12","loc":"WP14","asset":"GAUGE-209","type":"GAUGE_READING","bat":78,"ok":true,"fail":null},{"s":7,"ts":"2026-09-08T10:15:24","loc":"WP10","asset":"PUMP-205","type":"THERMAL_INSPECTION","bat":75,"ok":true,"fail":null},{"s":8,"ts":"2026-09-08T10:17:36","loc":"WP12","asset":"PANEL-218","type":"GAUGE_READING","bat":72,"ok":true,"fail":null},{"s":9,"ts":"2026-09-08T10:19:48","loc":"WP06","asset":"HX-217","type":"ACOUSTIC_INSPECTION","bat":68,"ok":true,"fail":null},{"s":10,"ts":"2026-09-08T10:22:00","loc":"WP09","asset":"PANEL-211","type":"VISUAL_INSPECTION","bat":65,"ok":true,"fail":null}],"anoms":[],"flags":[{"s":3,"asset":"VALVE-207","type":"SOUND_DB","val":52.9,"unit":"dB","norm":72.0}],"brief":"Mission M021 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Inspection Dock (VALVE-207). 1 reading fell outside the normal range for its type. Battery went from 98% to 65%.","next":"review why Inspection Dock failed.","ai":null},{"id":"M022","v":"V2","status":"COMPLETED","start":"2026-09-08T18:00:00","end":"2026-09-08T18:24:00","dur":24,"b0":86,"b1":68,"acts":[{"s":1,"ts":"2026-09-08T18:02:24","loc":"WP05","asset":"HX-202","type":"NAVIGATION","bat":84,"ok":true,"fail":null},{"s":2,"ts":"2026-09-08T18:04:48","loc":"WP04","asset":"COMP-214","type":"VISUAL_INSPECTION","bat":82,"ok":true,"fail":null},{"s":3,"ts":"2026-09-08T18:07:12","loc":"WP12","asset":"PANEL-218","type":"NAVIGATION","bat":81,"ok":false,"fail":"COMMUNICATION_LOSS"},{"s":4,"ts":"2026-09-08T18:09:36","loc":"WP11","asset":"HX-210","type":"THERMAL_INSPECTION","bat":79,"ok":true,"fail":null},{"s":5,"ts":"2026-09-08T18:12:00","loc":"WP04","asset":"COMP-214","type":"GAUGE_READING","bat":77,"ok":true,"fail":null},{"s":6,"ts":"2026-09-08T18:14:24","loc":"WP13","asset":"HX-213","type":"NAVIGATION","bat":75,"ok":true,"fail":null},{"s":7,"ts":"2026-09-08T18:16:48","loc":"WP01","asset":"PANEL-215","type":"ACOUSTIC_INSPECTION","bat":73,"ok":true,"fail":null},{"s":8,"ts":"2026-09-08T18:19:12","loc":"WP13","asset":"HX-216","type":"THERMAL_INSPECTION","bat":72,"ok":true,"fail":null},{"s":9,"ts":"2026-09-08T18:21:36","loc":"WP04","asset":"COMP-214","type":"THERMAL_INSPECTION","bat":70,"ok":true,"fail":null},{"s":10,"ts":"2026-09-08T18:24:00","loc":"WP15","asset":"PANEL-218","type":"VISUAL_INSPECTION","bat":68,"ok":true,"fail":null}],"anoms":[{"s":3,"sev":"HIGH","type":"SIGNAL_DEGRADATION","asset":"PANEL-218","loc":"WP12","rev":true,"onOk":false}],"flags":[],"brief":"Mission M022 was marked completed. 9 of 10 actions succeeded. Failed: navigation at Heat Exchanger Area (PANEL-218). 1 anomaly recorded, 1 needing review. Battery went from 86% to 68%.","next":"check PANEL-218 at Heat Exchanger Area (high signal degradation).","ai":null},{"id":"M023","v":"V2","status":"COMPLETED","start":"2026-09-09T02:00:00","end":"2026-09-09T02:21:00","dur":21,"b0":94,"b1":52,"acts":[{"s":1,"ts":"2026-09-09T02:02:06","loc":"WP05","asset":"PANEL-203","type":"NAVIGATION","bat":90,"ok":true,"fail":null},{"s":2,"ts":"2026-09-09T02:04:12","loc":"WP08","asset":"PUMP-205","type":"GAUGE_READING","bat":86,"ok":true,"fail":null},{"s":3,"ts":"2026-09-09T02:06:18","loc":"WP13","asset":"HX-213","type":"THERMAL_INSPECTION","bat":81,"ok":true,"fail":null},{"s":4,"ts":"2026-09-09T02:08:24","loc":"WP09","asset":"PANEL-211","type":"VISUAL_INSPECTION","bat":77,"ok":true,"fail":null},{"s":5,"ts":"2026-09-09T02:10:30","loc":"WP01","asset":"PANEL-215","type":"VISUAL_INSPECTION","bat":73,"ok":true,"fail":null},{"s":6,"ts":"2026-09-09T02:12:36","loc":"WP07","asset":"PANEL-203","type":"NAVIGATION","bat":69,"ok":true,"fail":null},{"s":7,"ts":"2026-09-09T02:14:42","loc":"WP11","asset":"HX-210","type":"THERMAL_INSPECTION","bat":65,"ok":true,"fail":null},{"s":8,"ts":"2026-09-09T02:16:48","loc":"WP05","asset":"HX-201","type":"THERMAL_INSPECTION","bat":60,"ok":true,"fail":null},{"s":9,"ts":"2026-09-09T02:18:54","loc":"WP02","asset":"HX-208","type":"ACOUSTIC_INSPECTION","bat":56,"ok":true,"fail":null},{"s":10,"ts":"2026-09-09T02:21:00","loc":"WP03","asset":"HX-208","type":"VISUAL_INSPECTION","bat":52,"ok":true,"fail":null}],"anoms":[],"flags":[],"brief":"Mission M023 was marked completed. All 10 actions succeeded. Battery went from 94% to 52%.","next":"no action needed.","ai":"Mission M023 was completed with all 10 actions succeeding. The battery started at 94% and ended at 52%. There were no anomalies or unusual readings."},{"id":"M024","v":"V2","status":"COMPLETED","start":"2026-09-09T10:00:00","end":"2026-09-09T10:19:00","dur":19,"b0":94,"b1":54,"acts":[{"s":1,"ts":"2026-09-09T10:01:54","loc":"WP05","asset":"HX-204","type":"NAVIGATION","bat":90,"ok":true,"fail":null},{"s":2,"ts":"2026-09-09T10:03:48","loc":"WP04","asset":"COMP-214","type":"NAVIGATION","bat":86,"ok":true,"fail":null},{"s":3,"ts":"2026-09-09T10:05:42","loc":"WP10","asset":"PUMP-205","type":"ACOUSTIC_INSPECTION","bat":82,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":4,"ts":"2026-09-09T10:07:36","loc":"WP01","asset":"PANEL-215","type":"NAVIGATION","bat":78,"ok":false,"fail":"OBSTACLE_DETECTION"},{"s":5,"ts":"2026-09-09T10:09:30","loc":"WP08","asset":"HX-202","type":"NAVIGATION","bat":74,"ok":true,"fail":null},{"s":6,"ts":"2026-09-09T10:11:24","loc":"WP07","asset":"HX-204","type":"VISUAL_INSPECTION","bat":70,"ok":true,"fail":null},{"s":7,"ts":"2026-09-09T10:13:18","loc":"WP02","asset":"HX-216","type":"THERMAL_INSPECTION","bat":66,"ok":true,"fail":null},{"s":8,"ts":"2026-09-09T10:15:12","loc":"WP15","asset":"PANEL-203","type":"THERMAL_INSPECTION","bat":62,"ok":true,"fail":null},{"s":9,"ts":"2026-09-09T10:17:06","loc":"WP11","asset":"HX-210","type":"NAVIGATION","bat":58,"ok":true,"fail":null},{"s":10,"ts":"2026-09-09T10:19:00","loc":"WP04","asset":"COMP-214","type":"ACOUSTIC_INSPECTION","bat":54,"ok":true,"fail":null}],"anoms":[{"s":3,"sev":"HIGH","type":"ABNORMAL_VIBRATION","asset":"PUMP-205","loc":"WP10","rev":true,"onOk":false},{"s":4,"sev":"MEDIUM","type":"LOCALIZATION_ISSUE","asset":"PANEL-215","loc":"WP01","rev":false,"onOk":false}],"flags":[{"s":4,"asset":"PANEL-215","type":"LOCALIZATION_CONFIDENCE_PCT","val":49.2,"unit":"pct","norm":88.3}],"brief":"Mission M024 was marked completed. 8 of 10 actions succeeded. Failed: acoustic inspection at Valve Station (PUMP-205); navigation at Main Entrance (PANEL-215). 2 anomalies recorded, 1 needing review. 1 reading fell outside the normal range for its type. Battery went from 94% to 54%.","next":"check PUMP-205 at Valve Station (high abnormal vibration).","ai":"Mission M024 was completed with 8 out of 10 actions succeeding. Two actions failed: an acoustic inspection of PUMP-205 at Valve Station had a sensor timeout, and navigation of PANEL-215 at Main Entrance encountered an obstacle. There were two anomalies: high abnormal vibration on PUMP-205 and a medium localization issue on PANEL-215. The vibration needs operator review, while the localization issue does not require review. The battery went from 94% to 54%. Localization confidence on PANEL-215 was 49.2%, which is below normal levels."},{"id":"M025","v":"V2","status":"COMPLETED","start":"2026-09-09T18:00:00","end":"2026-09-09T18:18:00","dur":18,"b0":93,"b1":72,"acts":[{"s":1,"ts":"2026-09-09T18:01:48","loc":"WP05","asset":"HX-201","type":"NAVIGATION","bat":91,"ok":true,"fail":null},{"s":2,"ts":"2026-09-09T18:03:36","loc":"WP12","asset":"VALVE-207","type":"VISUAL_INSPECTION","bat":89,"ok":true,"fail":null},{"s":3,"ts":"2026-09-09T18:05:24","loc":"WP12","asset":"PANEL-218","type":"NAVIGATION","bat":87,"ok":true,"fail":null},{"s":4,"ts":"2026-09-09T18:07:12","loc":"WP01","asset":"PANEL-215","type":"NAVIGATION","bat":85,"ok":true,"fail":null},{"s":5,"ts":"2026-09-09T18:09:00","loc":"WP09","asset":"PANEL-212","type":"GAUGE_READING","bat":82,"ok":true,"fail":null},{"s":6,"ts":"2026-09-09T18:10:48","loc":"WP11","asset":"HX-210","type":"THERMAL_INSPECTION","bat":80,"ok":true,"fail":null},{"s":7,"ts":"2026-09-09T18:12:36","loc":"WP11","asset":"HX-210","type":"ACOUSTIC_INSPECTION","bat":78,"ok":false,"fail":"SIGNAL_NOISE"},{"s":8,"ts":"2026-09-09T18:14:24","loc":"WP02","asset":"PANEL-212","type":"NAVIGATION","bat":76,"ok":true,"fail":null},{"s":9,"ts":"2026-09-09T18:16:12","loc":"WP07","asset":"HX-208","type":"GAUGE_READING","bat":74,"ok":false,"fail":"SENSOR_TIMEOUT"},{"s":10,"ts":"2026-09-09T18:18:00","loc":"WP08","asset":"HX-201","type":"VISUAL_INSPECTION","bat":72,"ok":true,"fail":null}],"anoms":[{"s":7,"sev":"HIGH","type":"ABNORMAL_VIBRATION","asset":"HX-210","loc":"WP11","rev":true,"onOk":false},{"s":8,"sev":"LOW","type":"SIGNAL_DEGRADATION","asset":"PANEL-212","loc":"WP02","rev":false,"onOk":true},{"s":9,"sev":"LOW","type":"GAUGE_OUT_OF_RANGE","asset":"HX-208","loc":"WP07","rev":false,"onOk":false}],"flags":[],"brief":"Mission M025 was marked completed. 8 of 10 actions succeeded. Failed: acoustic inspection at Battery Room (HX-210); gauge reading at Control Room Corridor (HX-208). 3 anomalies recorded, 1 needing review, 1 on an action that reported success. Battery went from 93% to 72%.","next":"check HX-210 at Battery Room (high abnormal vibration).","ai":"Mission M025 was completed with 8 actions out of 10. Two actions failed: an acoustic inspection at Battery Room had a signal noise issue, and a gauge reading at Control Room Corridor had a sensor timeout. An anomaly of high abnormal vibration on HX-210 at Battery Room requires operator review."},{"id":"M026","v":"V2","status":"COMPLETED","start":"2026-09-10T02:00:00","end":"2026-09-10T02:23:00","dur":23,"b0":82,"b1":52,"acts":[{"s":1,"ts":"2026-09-10T02:02:18","loc":"WP08","asset":"PANEL-212","type":"VISUAL_INSPECTION","bat":79,"ok":true,"fail":null},{"s":2,"ts":"2026-09-10T02:04:36","loc":"WP03","asset":"HX-208","type":"GAUGE_READING","bat":76,"ok":true,"fail":null},{"s":3,"ts":"2026-09-10T02:06:54","loc":"WP13","asset":"HX-216","type":"THERMAL_INSPECTION","bat":73,"ok":true,"fail":null},{"s":4,"ts":"2026-09-10T02:09:12","loc":"WP07","asset":"VALVE-207","type":"VISUAL_INSPECTION","bat":70,"ok":true,"fail":null},{"s":5,"ts":"2026-09-10T02:11:30","loc":"WP14","asset":"MOTOR-206","type":"ACOUSTIC_INSPECTION","bat":67,"ok":true,"fail":null},{"s":6,"ts":"2026-09-10T02:13:48","loc":"WP13","asset":"HX-219","type":"NAVIGATION","bat":64,"ok":true,"fail":null},{"s":7,"ts":"2026-09-10T02:16:06","loc":"WP12","asset":"VALVE-207","type":"GAUGE_READING","bat":61,"ok":true,"fail":null},{"s":8,"ts":"2026-09-10T02:18:24","loc":"WP09","asset":"PANEL-211","type":"NAVIGATION","bat":58,"ok":true,"fail":null},{"s":9,"ts":"2026-09-10T02:20:42","loc":"WP02","asset":"PANEL-215","type":"VISUAL_INSPECTION","bat":55,"ok":true,"fail":null},{"s":10,"ts":"2026-09-10T02:23:00","loc":"WP15","asset":"HX-210","type":"ACOUSTIC_INSPECTION","bat":52,"ok":true,"fail":null}],"anoms":[{"s":1,"sev":"MEDIUM","type":"VISUAL_DEFECT","asset":"PANEL-212","loc":"WP08","rev":false,"onOk":true}],"flags":[],"brief":"Mission M026 was marked completed. All 10 actions succeeded. 1 anomaly recorded, 0 needing review, 1 on an action that reported success. Battery went from 82% to 52%.","next":"no action needed.","ai":"Mission M026 was completed with all 10 actions succeeding. The battery started at 82% and ended at 52%. There was one anomaly recorded, but it does not require operator review."},{"id":"M027","v":"V2","status":"COMPLETED","start":"2026-09-10T10:00:00","end":"2026-09-10T10:25:00","dur":25,"b0":92,"b1":61,"acts":[{"s":1,"ts":"2026-09-10T10:02:30","loc":"WP01","asset":"PANEL-215","type":"NAVIGATION","bat":89,"ok":true,"fail":null},{"s":2,"ts":"2026-09-10T10:05:00","loc":"WP12","asset":"VALVE-207","type":"ACOUSTIC_INSPECTION","bat":86,"ok":true,"fail":null},{"s":3,"ts":"2026-09-10T10:07:30","loc":"WP06","asset":"HX-217","type":"GAUGE_READING","bat":83,"ok":true,"fail":null},{"s":4,"ts":"2026-09-10T10:10:00","loc":"WP07","asset":"PANEL-211","type":"THERMAL_INSPECTION","bat":80,"ok":true,"fail":null},{"s":5,"ts":"2026-09-10T10:12:30","loc":"WP02","asset":"HX-202","type":"ACOUSTIC_INSPECTION","bat":76,"ok":false,"fail":"READING_UNRELIABLE"},{"s":6,"ts":"2026-09-10T10:15:00","loc":"WP13","asset":"HX-219","type":"NAVIGATION","bat":73,"ok":true,"fail":null},{"s":7,"ts":"2026-09-10T10:17:30","loc":"WP11","asset":"HX-210","type":"VISUAL_INSPECTION","bat":70,"ok":true,"fail":null},{"s":8,"ts":"2026-09-10T10:20:00","loc":"WP10","asset":"PUMP-205","type":"GAUGE_READING","bat":67,"ok":true,"fail":null},{"s":9,"ts":"2026-09-10T10:22:30","loc":"WP13","asset":"HX-219","type":"NAVIGATION","bat":64,"ok":true,"fail":null},{"s":10,"ts":"2026-09-10T10:25:00","loc":"WP03","asset":"HX-208","type":"GAUGE_READING","bat":61,"ok":true,"fail":null}],"anoms":[{"s":5,"sev":"HIGH","type":"ABNORMAL_VIBRATION","asset":"HX-202","loc":"WP02","rev":true,"onOk":false},{"s":6,"sev":"MEDIUM","type":"SIGNAL_DEGRADATION","asset":"HX-219","loc":"WP13","rev":false,"onOk":true}],"flags":[],"brief":"Mission M027 was marked completed. 9 of 10 actions succeeded. Failed: acoustic inspection at Electrical Room (HX-202). 2 anomalies recorded, 1 needing review, 1 on an action that reported success. Battery went from 92% to 61%.","next":"check HX-202 at Electrical Room (high abnormal vibration).","ai":"Mission M027 was completed with 9 out of 10 actions succeeding. One action failed at Electrical Room due to an unreliable reading, with battery dropping from 92% to 61%. An anomaly of high abnormal vibration on HX-202 at Electrical Room requires operator review. An action on HX-219 at Warehouse Corridor had a medium signal degradation without needing review."}],"locations":[{"id":"WP01","name":"Main Entrance","x":15.7,"y":50.2,"env":"NORMAL","zone":"ACCESS"},{"id":"WP02","name":"Electrical Room","x":63.2,"y":90.8,"env":"INDOOR_DUSTY","zone":"ELECTRICAL"},{"id":"WP03","name":"Cooling Loop","x":85.5,"y":60.9,"env":"LOW_LIGHT","zone":"PROCESS"},{"id":"WP04","name":"Pump Bay","x":75.5,"y":54.3,"env":"LOW_LIGHT","zone":"MECHANICAL"},{"id":"WP05","name":"Pipe Gallery","x":72.6,"y":57.8,"env":"HIGH_NOISE","zone":"PROCESS"},{"id":"WP06","name":"Compressor Area","x":5.2,"y":12.3,"env":"HIGH_NOISE","zone":"MECHANICAL"},{"id":"WP07","name":"Control Room Corridor","x":78.5,"y":45.5,"env":"LOW_LIGHT","zone":"ACCESS"},{"id":"WP08","name":"Turbine Hall North","x":66.1,"y":23.9,"env":"HIGH_NOISE","zone":"MECHANICAL"},{"id":"WP09","name":"Turbine Hall South","x":36.3,"y":94.9,"env":"HIGH_NOISE","zone":"MECHANICAL"},{"id":"WP10","name":"Valve Station","x":77.5,"y":95.0,"env":"NORMAL","zone":"PROCESS"},{"id":"WP11","name":"Battery Room","x":62.4,"y":70.1,"env":"INDOOR_DRY","zone":"ELECTRICAL"},{"id":"WP12","name":"Heat Exchanger Area","x":55.2,"y":31.3,"env":"LOW_LIGHT","zone":"PROCESS"},{"id":"WP13","name":"Warehouse Corridor","x":17.7,"y":63.0,"env":"NORMAL","zone":"ACCESS"},{"id":"WP14","name":"Auxiliary Systems Bay","x":32.8,"y":81.3,"env":"HIGH_NOISE","zone":"MECHANICAL"},{"id":"WP15","name":"Inspection Dock","x":37.7,"y":43.0,"env":"LOW_LIGHT","zone":"ACCESS"}],"headline":["26 of 27 missions say completed, but 21 of those had at least one failed action inside.","Battery is the strongest driver of failure: below 30% battery only 49% of actions succeed (27% below 20%), versus 87% above 30%.","V2 looks better (77% to 91% success) mainly because it halved battery drain per mission (56 to 28 points) and never ran below 30%. At the same battery level V1 and V2 perform about the same (86% vs 90%).","8 anomalies sit on actions that reported success, 3 of them needing review, including a CRITICAL abnormal temperature on HX-204 in mission M020."],"rejected":[{"m":"M021","said":"\"The reading on VALVE-207 was 52.9 dB, which is above normal.\"","why":"Normal is about 72 dB. 52.9 is below normal, not above."},{"m":"M008","said":"\"7 out of 10 actions succeeding. All actions reported success.\"","why":"Contradicts itself: 3 actions failed."},{"m":"M006","said":"\"A medium abnormal vibration on PANEL-215 requires operator review.\"","why":"Only the critical anomaly on PANEL-211 needs review."},{"m":"M022","said":"\"One action failed due to communication loss, resulting in a battery level dropping from 86% to 68%.\"","why":"Invents a cause. Nothing in the data links the failure to the battery."},{"m":"M002","said":"\"...but the battery was still sufficient.\"","why":"An opinion. The facts give numbers, not judgments."}],"ai_model":"Qwen2.5-1.5B-Instruct"}</script>
+<script>
+(() => {
+const D = JSON.parse(document.getElementById('spot-data').textContent);
+const LOC = Object.fromEntries(D.locations.map(l => [l.id, l]));
+const MS = D.missions;
+const PRETTY = {NAVIGATION:'Navigation',VISUAL_INSPECTION:'Visual inspection',THERMAL_INSPECTION:'Thermal inspection',ACOUSTIC_INSPECTION:'Acoustic inspection',GAUGE_READING:'Gauge reading'};
+const nice = s => !s ? '' : (PRETTY[s] || (s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g,' ')));
+const readingName = t => nice(t).replace(/ (pct|c|db|psi)$/,'');
+const unit = u => u === 'pct' ? '%' : ' ' + u;
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k,v] of Object.entries(attrs)) { if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v); } kids.flat().forEach(c => c != null && e.append(c.nodeType ? c : document.createTextNode(c))); return e; };
+const SVG = 'http://www.w3.org/2000/svg';
+const sv = (tag, attrs = {}, text) => { const e = document.createElementNS(SVG, tag); for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v); if (text != null) e.textContent = text; return e; };
+const fmtDate = ts => { const d = new Date(ts); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + ts.slice(11,16); };
+const reviewCount = m => m.anoms.filter(a => a.rev).length;
+const failCount = m => m.acts.filter(a => !a.ok).length;
+
+/* ---------- Header fleet numbers ---------- */
+const S = D.summary;
+const fleet = document.getElementById('fleet');
+[[`${S.missions_completed}/${S.missions}`, 'Say completed'], [S.completed_missions_with_failures, 'Hid a failure'], [Math.round(S.action_success_rate*100)+'%', 'Actions succeeded'], [S.anomalies_review_required, 'Need review'], [S.anomalies_on_successful_actions, 'Behind a success']].forEach(([v,l]) => fleet.append(el('div',{}, el('b',{class:'num',text:String(v)}), el('span',{text:l}))));
+
+/* ---------- Views ---------- */
+const tabs = {live: document.getElementById('tab-live'), trends: document.getElementById('tab-trends')};
+function showView(name) {
+  for (const [k,b] of Object.entries(tabs)) { b.setAttribute('aria-selected', k === name); document.getElementById('view-'+k).hidden = k !== name; }
+  if (name === 'trends') drawTrends();
+}
+tabs.live.onclick = () => showView('live');
+tabs.trends.onclick = () => showView('trends');
+
+/* ---------- Mission queue ---------- */
+const FILTERS = [['all','All'],['review','Needs review'],['V1','V1'],['V2','V2']];
+let filter = 'all';
+const filtersEl = document.getElementById('filters');
+FILTERS.forEach(([k,l]) => filtersEl.append(el('button',{class:'chip','aria-pressed':String(k===filter),onclick:() => { filter = k; filtersEl.querySelectorAll('.chip').forEach((c,i) => c.setAttribute('aria-pressed', FILTERS[i][0] === k)); renderQueue(); }, text:l})));
+function renderQueue() {
+  const q = document.getElementById('queue'); q.replaceChildren();
+  const list = MS.filter(m => filter === 'all' || (filter === 'review' ? reviewCount(m) > 0 : m.v === filter)).slice().reverse();
+  document.getElementById('qcount').textContent = list.length + ' shown';
+  list.forEach(m => {
+    const n = reviewCount(m);
+    const strip = el('div',{class:'strip','aria-hidden':'true'}, m.acts.map(a => el('i',{class:a.ok?'':'f'})));
+    const b = el('button',{class:'q','aria-current':String(m.id===cur?.id),onclick:() => load(m.id, true)},
+      el('span',{class:'id',text:m.id}), el('span',{class:'when',text:fmtDate(m.start)}),
+      el('div',{class:'badges'}, el('span',{class:'pill '+m.v.toLowerCase(),text:m.v}), el('span',{class:'alertn'+(n?'':' zero'),text:n ? n+' review' : (m.status==='FAILED'?'failed':'ok')})),
+      strip);
+    b.setAttribute('aria-label', `${m.id}, ${m.v}, ${m.acts.filter(a=>a.ok).length} of 10 succeeded, ${n} anomalies need review`);
+    q.append(b);
+  });
+}
+
+/* ---------- Map ---------- */
+const map = document.getElementById('map');
+const MX = x => 60 + x * 8.8, MY = y => 520 - y * 4.8;
+function drawBase() {
+  map.replaceChildren();
+  const g = sv('g');
+  for (let x = 0; x <= 100; x += 10) g.append(sv('line',{class:'grid-l',x1:MX(x),x2:MX(x),y1:MY(0),y2:MY(100),opacity:.35}));
+  for (let y = 0; y <= 100; y += 10) g.append(sv('line',{class:'grid-l',x1:MX(0),x2:MX(100),y1:MY(y),y2:MY(y),opacity:.35}));
+  map.append(g);
+  map.append(sv('path',{class:'route',id:'route'}));
+  map.append(sv('path',{class:'trail',id:'trail'}));
+  const wps = sv('g',{id:'wps'});
+  D.locations.forEach(l => {
+    const w = sv('g',{class:'wp','data-id':l.id});
+    w.append(sv('circle',{cx:MX(l.x),cy:MY(l.y),r:6}));
+    const right = l.x < 78;
+    w.append(sv('text',{x:MX(l.x)+(right?12:-12),y:MY(l.y)+4,'text-anchor':right?'start':'end'}, l.name));
+    wps.append(w);
+  });
+  map.append(wps);
+  map.append(sv('g',{id:'stops'}));
+  map.append(sv('circle',{class:'robot-halo',id:'halo',r:22,cx:-100,cy:-100}));
+  map.append(sv('circle',{class:'robot',id:'robot',r:9,cx:-100,cy:-100}));
+}
+
+/* ---------- Playback state ---------- */
+let cur = null, idx = -1, playing = false, speed = 2, raf = 0, phase = 'idle', phaseStart = 0, lastPos = null;
+const TRAVEL = 1500, WORK = 900;
+const SPEEDS = [1,2,4,8];
+const speedEl = document.getElementById('speed');
+SPEEDS.forEach(s => speedEl.append(el('button',{'aria-pressed':String(s===speed),text:s+'x',onclick:() => { speed = s; speedEl.querySelectorAll('button').forEach((b,i) => b.setAttribute('aria-pressed', SPEEDS[i]===s)); }})));
+
+function stopPositions(m) {
+  // Several actions can happen at one waypoint: fan their badges out around it.
+  const seen = {};
+  return m.acts.map(a => { const l = LOC[a.loc]; const k = seen[a.loc] = (seen[a.loc] || 0) + 1; const ang = (k-1) * 1.1 - .55; const off = k === 1 ? 0 : 20; return {x: MX(l.x) + Math.cos(ang)*off, y: MY(l.y) - 22 - Math.sin(ang)*off, px: MX(l.x), py: MY(l.y)}; });
+}
+
+let P = [];
+function load(id, user) {
+  cancelAnimationFrame(raf); playing = false;
+  cur = MS.find(m => m.id === id); P = stopPositions(cur);
+  document.querySelectorAll('.q').forEach(q => q.setAttribute('aria-current', q.querySelector('.id').textContent === id));
+  document.getElementById('map-title').textContent = 'Facility map · ' + id;
+  document.getElementById('map-sub').textContent = `${cur.v} · ${fmtDate(cur.start)} · ${cur.dur} min`;
+  // waypoints on this route light up
+  const onRoute = new Set(cur.acts.map(a => a.loc));
+  document.querySelectorAll('#wps .wp').forEach(w => w.classList.toggle('on', onRoute.has(w.dataset.id)));
+  document.getElementById('route').setAttribute('d', 'M' + P.map(p => `${p.px},${p.py}`).join(' L'));
+  const stops = document.getElementById('stops'); stops.replaceChildren();
+  P.forEach((p,i) => { const g = sv('g',{class:'stop pending',id:'stop'+i}); g.append(sv('line',{x1:p.px,y1:p.py,x2:p.x,y2:p.y+9,stroke:'var(--line-2)','stroke-width':1})); g.append(sv('circle',{class:'ping',id:'ping'+i,cx:p.x,cy:p.y,r:12})); g.append(sv('circle',{cx:p.x,cy:p.y,r:11})); g.append(sv('text',{x:p.x,y:p.y},String(i+1))); stops.append(g); });
+  const steps = document.getElementById('steps'); steps.replaceChildren();
+  cur.acts.forEach((a,i) => steps.append(el('button',{'aria-label':`Jump to action ${i+1}`,text:String(i+1),onclick:() => jumpTo(i)})));
+  reset();
+  if (user) { finish(); }
+}
+
+function reset() {
+  idx = -1; phase = 'idle'; lastPos = {x:P[0].px, y:P[0].py};
+  document.querySelectorAll('#stops .stop').forEach(s => s.setAttribute('class','stop pending'));
+  document.querySelectorAll('#steps button').forEach(b => b.className = '');
+  document.getElementById('trail').setAttribute('d','');
+  placeRobot(lastPos.x, lastPos.y);
+  document.getElementById('alerts').replaceChildren(el('div',{class:'empty',text:'Nothing yet. Alerts appear here as the mission runs.'}));
+  setAlertCount(0);
+  setBattery(cur.b0); setStats(0,0,0); setClock(cur.start);
+  setNow(null);
+  document.getElementById('tele-state').textContent = 'READY';
+  renderReport(false);
+  setPlayLabel();
+}
+
+function placeRobot(x,y){ for (const id of ['robot','halo']) { const c = document.getElementById(id); c.setAttribute('cx',x); c.setAttribute('cy',y); } }
+function setBattery(b) {
+  const v = Math.round(b);
+  document.getElementById('bat').firstChild.textContent = v;
+  const f = document.getElementById('gfill'); f.style.width = v + '%';
+  const col = v < 30 ? 'var(--bad)' : v < 45 ? 'var(--warn)' : 'var(--ok)';
+  f.style.background = col; document.getElementById('bat').style.color = v < 30 ? 'var(--bad)' : '';
+  document.getElementById('bat-note').innerHTML = '';
+  document.getElementById('bat-note').append(v < 30 ? el('span',{style:'color:var(--bad)',text:'In the danger zone. Sensor failures rise sharply here.'}) : v < 45 ? el('span',{style:'color:var(--warn)',text:'Approaching the danger zone'}) : el('span',{style:'color:var(--muted)',text:'Healthy range'}));
+}
+function setStats(d,o,b){ document.getElementById('st-done').textContent = d; document.getElementById('st-ok').textContent = o; document.getElementById('st-bad').textContent = b; }
+function setClock(ts){ document.getElementById('clock').textContent = ts.slice(11,19); }
+function setNow(a, state) {
+  const n = document.getElementById('now'); n.replaceChildren();
+  if (!a) { n.append(el('div',{class:'k',text:'Current action'}), el('div',{class:'s',text:'Waiting to start. Press Play to replay this mission from its event stream.'})); return; }
+  const l = LOC[a.loc];
+  n.append(el('div',{class:'k',text:`Action ${a.s} of 10 · ${state === 'travel' ? 'walking to' : state === 'work' ? 'inspecting' : 'result'}`}), el('div',{class:'t',text:nice(a.type)}), el('div',{class:'s',text:`${a.asset} at ${l.name}`}));
+  if (state === 'done') n.append(el('div',{class:'r',style:`color:${a.ok?'var(--ok)':'var(--bad)'}`,text:a.ok ? '✓ Succeeded' : '✕ Failed: ' + nice(a.fail)}));
+  else if (state === 'work') n.append(el('div',{class:'r',style:'color:var(--robot)',text:'● Running…'}));
+}
+let alertN = 0;
+function setAlertCount(n){ alertN = n; const e = document.getElementById('al-n'); e.textContent = n; e.className = 'alertn' + (n ? '' : ' zero'); }
+function pushAlert(kind, top, title, sub, tags) {
+  const box = document.getElementById('alerts');
+  if (!alertN) box.replaceChildren();
+  const a = el('div',{class:'al new '+kind}, el('div',{class:'top'}, el('span',{text:top[0]}), el('span',{text:top[1]})), el('div',{class:'t',text:title}), el('div',{class:'s',text:sub}), tags.map(([c,t]) => el('span',{class:'tag '+c,text:t})));
+  box.prepend(a); setAlertCount(alertN + 1);
+}
+
+function resolveAction(i) {
+  const a = cur.acts[i];
+  document.getElementById('stop'+i).setAttribute('class','stop ' + (a.ok ? 'ok' : 'bad'));
+  const sb = document.querySelectorAll('#steps button')[i]; sb.className = a.ok ? 'ok' : 'bad';
+  if (!a.ok) { const p = document.getElementById('ping'+i); p.classList.remove('go'); void p.getBBox(); p.classList.add('go'); }
+  const done = i + 1, ok = cur.acts.slice(0, done).filter(x => x.ok).length;
+  setStats(done, ok, done - ok); setBattery(a.bat); setClock(a.ts); setNow(a, 'done');
+  const where = LOC[a.loc].name, t = a.ts.slice(11,16);
+  if (!a.ok) pushAlert('fail', ['ACTION '+a.s, t], `${nice(a.type)} failed: ${nice(a.fail).toLowerCase()}`, `${a.asset} at ${where} · battery ${a.bat}%`, a.bat < 30 ? [['hid','Under 30% battery']] : []);
+  cur.anoms.filter(x => x.s === a.s).forEach(x => {
+    const kind = x.sev === 'CRITICAL' || x.sev === 'HIGH' ? 'crit' : x.sev === 'MEDIUM' ? '' : 'low';
+    const tags = []; if (x.rev) tags.push(['rev','Needs review']); if (x.onOk) tags.push(['hid','Hidden behind a success']);
+    pushAlert(kind, [x.sev, t], `${nice(x.type)}`, `${x.asset} at ${LOC[x.loc].name}`, tags);
+  });
+  cur.flags.filter(f => f.s === a.s).forEach(f => pushAlert('read', ['READING', t], `${readingName(f.type)} ${f.val}${unit(f.unit)}`, `${f.asset} · normal is about ${f.norm}${unit(f.unit)}`, []));
+  document.getElementById('trail').setAttribute('d', 'M' + P.slice(0, done).map(p => `${p.px},${p.py}`).join(' L'));
+}
+
+function tick(now) {
+  if (!playing) return;
+  const dt = (now - phaseStart) * speed;
+  if (phase === 'travel') {
+    const from = lastPos, to = {x:P[idx].px, y:P[idx].py};
+    const k = Math.min(1, dt / (idx === 0 ? 400 : TRAVEL)); const e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k+2,2)/2;
+    placeRobot(from.x + (to.x-from.x)*e, from.y + (to.y-from.y)*e);
+    const prevB = idx === 0 ? cur.b0 : cur.acts[idx-1].bat; setBattery(prevB + (cur.acts[idx].bat - prevB) * k);
+    const done = P.slice(0, idx).map(p => `${p.px},${p.py}`); done.push(`${from.x + (to.x-from.x)*e},${from.y + (to.y-from.y)*e}`);
+    document.getElementById('trail').setAttribute('d', 'M' + done.join(' L'));
+    if (k >= 1) { phase = 'work'; phaseStart = now; setNow(cur.acts[idx], 'work'); document.getElementById('tele-state').textContent = 'INSPECTING'; }
+  } else if (phase === 'work') {
+    if (dt >= WORK) { resolveAction(idx); lastPos = {x:P[idx].px, y:P[idx].py}; next(now); }
+  }
+  if (playing) raf = requestAnimationFrame(tick);
+}
+function next(now) {
+  if (idx >= cur.acts.length - 1) { complete(); return; }
+  idx++; phase = 'travel'; phaseStart = now;
+  document.querySelectorAll('#steps button').forEach((b,i) => b.classList.toggle('cur', i === idx));
+  setNow(cur.acts[idx], 'travel'); document.getElementById('tele-state').textContent = 'WALKING';
+}
+function complete() {
+  playing = false; phase = 'done'; setPlayLabel();
+  document.querySelectorAll('#steps button').forEach(b => b.classList.remove('cur'));
+  setBattery(cur.b1); setClock(cur.end);
+  document.getElementById('tele-state').textContent = 'MISSION ENDED';
+  renderReport(true);
+}
+function play() {
+  if (phase === 'done') reset();
+  playing = !playing; setPlayLabel();
+  if (playing) { const t = performance.now(); if (phase === 'idle') next(t); else phaseStart = t - 0; raf = requestAnimationFrame(tick); }
+}
+function setPlayLabel(){ const b = document.getElementById('play'); b.textContent = playing ? 'Pause' : phase === 'done' ? 'Replay mission' : phase === 'idle' ? 'Play' : 'Resume'; }
+function finish() { cancelAnimationFrame(raf); playing = false; reset(); for (let i = 0; i < cur.acts.length; i++) resolveAction(i); placeRobot(P[P.length-1].px, P[P.length-1].py); idx = cur.acts.length - 1; complete(); }
+function jumpTo(i) { cancelAnimationFrame(raf); playing = false; reset(); for (let j = 0; j <= i; j++) resolveAction(j); idx = i; lastPos = {x:P[i].px,y:P[i].py}; placeRobot(lastPos.x,lastPos.y); if (i === cur.acts.length-1) complete(); else { phase = 'paused'; document.getElementById('tele-state').textContent = 'PAUSED'; setPlayLabel(); document.querySelectorAll('#steps button').forEach((b,k) => b.classList.toggle('cur', k === i)); phase = 'work'; idx = i; } }
+// After a jump, resuming continues from the next action.
+const _play = play;
+document.getElementById('play').onclick = () => { if (!playing && phase === 'work' && document.getElementById('tele-state').textContent === 'PAUSED') { playing = true; setPlayLabel(); next(performance.now()); raf = requestAnimationFrame(tick); return; } _play(); };
+document.getElementById('restart').onclick = () => { cancelAnimationFrame(raf); playing = false; reset(); };
+document.getElementById('skip').onclick = finish;
+document.addEventListener('keydown', e => { if (e.code === 'Space' && !['BUTTON','INPUT','SELECT'].includes(document.activeElement.tagName) && !document.getElementById('view-live').hidden) { e.preventDefault(); document.getElementById('play').click(); } });
+
+/* ---------- Report ---------- */
+function renderReport(done) {
+  const r = document.getElementById('report'); r.replaceChildren();
+  document.getElementById('rep-sub').textContent = cur.id;
+  if (!done) { r.append(el('p',{class:'pending-note',text:'The report appears when the mission ends. Press Skip to end to see it now.'})); return; }
+  const ok = cur.acts.filter(a => a.ok).length, nf = 10 - ok;
+  const head = el('div',{class:'rep-head'},
+    el('div',{}, el('div',{class:'hl num'}, String(ok), el('small',{text:' of 10 actions succeeded'}))),
+    el('div',{}, el('div',{style:'font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px',text:'Robot reported'}), el('span',{class:'stamp '+(cur.status==='COMPLETED'?'ok':'bad'),text:cur.status})),
+    el('div',{class:'rep-meta'}, el('span',{}, 'Battery ', el('b',{class:'num',text:`${cur.b0}% → ${cur.b1}%`})), el('span',{}, 'Duration ', el('b',{class:'num',text:cur.dur+' min'})), el('span',{}, 'Config ', el('b',{text:cur.v}))));
+  r.append(head);
+  if (cur.status === 'COMPLETED' && nf) r.append(el('div',{class:'irony',text:`The robot stamped this mission completed, but ${nf} of its actions failed.`}));
+  const isAI = !!cur.ai;
+  const brief = el('div',{class:'brief'}, el('p',{text:isAI ? cur.ai : cur.brief}), el('div',{class:'next'}, el('span',{text:'Next'}), cur.next.charAt(0).toUpperCase() + cur.next.slice(1)));
+  const prov = el('div',{class:'prov'}, isAI ? el('span',{class:'ai',text:`✓ Written by ${D.ai_model} from this mission's numbers. Passed every check.`}) : el('span',{class:'tp',text:'Template brief. The AI draft for this mission failed a check, so it is not shown.'}), el('span',{text:'The Next step is chosen by code, never by the model.'}));
+  const honest = el('details',{class:'honest'}, el('summary',{text:'How we keep the AI honest'}),
+    el('p',{style:'margin:8px 0 0;color:var(--fg-2)',text:`The model only rewrites a fact sheet that code builds for one mission. About 20 checks in code reject any draft with a number, asset or place not in the facts, a guessed cause, an opinion, a wrong review flag, or above and below normal flipped. ${MS.filter(m=>m.ai).length} of ${MS.length} drafts passed. Some that didn't:`}),
+    el('ul',{}, D.rejected.map(x => el('li',{}, el('span',{class:'mono',text:x.m+' '}), el('q',{text:x.said.replace(/^"|"$/g,'')}), ' ', x.why))));
+  brief.append(prov, honest);
+  r.append(brief);
+  // Attention table, most severe first
+  const rank = {CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3};
+  const rows = [];
+  cur.anoms.slice().sort((a,b) => rank[a.sev]-rank[b.sev]).forEach(x => rows.push([x.sev.charAt(0)+x.sev.slice(1).toLowerCase(), 'sev '+x.sev[0].toLowerCase(), nice(x.type), x.asset, LOC[x.loc].name, cur.acts[x.s-1].ts.slice(11,16), [x.rev?'Needs review':'', x.onOk?'On a successful action':''].filter(Boolean).join(' · ')]));
+  cur.acts.filter(a => !a.ok).forEach(a => rows.push(['Failed', 'sev f', `${nice(a.type)}: ${nice(a.fail).toLowerCase()}`, a.asset, LOC[a.loc].name, a.ts.slice(11,16), `Battery ${a.bat}%`]));
+  cur.flags.forEach(f => rows.push(['Reading', 'sev r', `${readingName(f.type)} ${f.val}${unit(f.unit)} (normal about ${f.norm}${unit(f.unit)})`, f.asset, LOC[cur.acts[f.s-1].loc].name, cur.acts[f.s-1].ts.slice(11,16), '']));
+  if (rows.length) {
+    const t = el('table',{}, el('thead',{}, el('tr',{}, ['Priority','What','Asset','Where','Time','Note'].map(h => el('th',{text:h})))), el('tbody',{}, rows.map(r => el('tr',{}, el('td',{class:r[1],text:r[0]}), el('td',{text:r[2]}), el('td',{class:'mono',text:r[3]}), el('td',{text:r[4]}), el('td',{class:'mono num',text:r[5]}), el('td',{style:'color:var(--fg-2)',text:r[6]})))));
+    r.append(el('h3',{style:'font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-2);margin:18px 0 0;font-weight:600',text:'What requires attention'}), el('div',{class:'tbl-wrap'}, t));
+  } else r.append(el('p',{style:'color:var(--ok);margin-top:14px',text:'Nothing on this mission needs attention.'}));
+}
+
+/* ---------- Trends ---------- */
+let trendsDrawn = false;
+function tipFor(svg) { const box = svg.parentElement; let t = box.querySelector('.tip'); if (!t) { t = el('div',{class:'tip',hidden:true}); box.append(t); } return { show(ev, lines) { t.replaceChildren(...lines.map((l,i) => el('div',{class:i?'':'k',text:l}))); t.hidden = false; const b = box.getBoundingClientRect(); let x = ev.clientX - b.left + 12; if (x + t.offsetWidth > b.width) x = ev.clientX - b.left - t.offsetWidth - 12; t.style.left = x+'px'; t.style.top = (ev.clientY - b.top + 12)+'px'; }, hide() { t.hidden = true; } }; }
+function drawTrends() {
+  if (trendsDrawn) return; trendsDrawn = true;
+  const acts = MS.flatMap(m => m.acts.map(a => ({...a, v:m.v})));
+  const rate = rs => rs.length ? rs.filter(a=>a.ok).length / rs.length : 0;
+  const pct = x => Math.round(x*100) + '%';
+  // Findings strip
+  const low = acts.filter(a=>a.bat<30), high = acts.filter(a=>a.bat>=30);
+  const v1 = acts.filter(a=>a.v==='V1'), v2 = acts.filter(a=>a.v==='V2');
+  const drain = v => { const ms = MS.filter(m=>m.v===v); return Math.round(ms.reduce((s,m)=>s+m.b0-m.b1,0)/ms.length); };
+  [[`${S.completed_missions_with_failures} of ${S.missions_completed}`, 'completed missions had a failed action inside'],
+   [pct(rate(low)), `of actions succeed under 30% battery, against ${pct(rate(high))} above it`],
+   [`${drain('V1')} → ${drain('V2')} pts`, 'battery used per mission, V1 to V2. That is most of V2\'s gain.'],
+   [String(S.anomalies_on_successful_actions), 'anomalies hidden behind actions that reported success']].forEach(([b,p]) => document.getElementById('findings').append(el('div',{class:'finding'}, el('b',{class:'num',text:b}), el('p',{text:p}))));
+
+  // Cliff
+  const bands = [['<20',0,20],['20s',20,30],['30s',30,40],['40s',40,50],['50s',50,60],['60+',60,101]];
+  { const s = document.getElementById('ch-cliff'), T = tipFor(s); const W=520,H=260,l=38,b=30,t=20,r=8; const bw=(W-l-r)/bands.length;
+    [0,25,50,75,100].forEach(v => { const y = H-b-(H-b-t)*v/100; s.append(sv('line',{class:'grid-l',x1:l,x2:W-r,y1:y,y2:y})); s.append(sv('text',{x:l-6,y:y+4,'text-anchor':'end'},v+'%')); });
+    bands.forEach(([lab,lo,hi],i) => { const rs = acts.filter(a=>a.bat>=lo&&a.bat<hi), v = rate(rs); const h=(H-b-t)*v, x=l+i*bw+bw*.18, w=bw*.64, y=H-b-h;
+      const rect = sv('rect',{x,y,width:w,height:h,rx:4,fill:hi<=30?'var(--bad)':'var(--v1)'}); rect.addEventListener('mousemove',ev=>T.show(ev,[`Battery ${lab}`,`${pct(v)} succeeded`,`${rs.filter(a=>a.ok).length} of ${rs.length} actions`])); rect.addEventListener('mouseleave',T.hide); s.append(rect);
+      s.append(sv('text',{class:'lbl',x:x+w/2,y:y-6,'text-anchor':'middle'},pct(v))); s.append(sv('text',{x:x+w/2,y:H-10,'text-anchor':'middle'},lab==='<20'?'Under 20%':lab==='60+'?'60%+':lab.replace('s','–'+(+lab.slice(0,2)+9)+'%'))); });
+  }
+  // V1 vs V2 at matched battery
+  { const s = document.getElementById('ch-vs'), T = tipFor(s); const groups=[['All actions',0],['30%+ battery',30],['60%+ battery',60]]; const W=520,H=240,l=38,b=30,t=20,r=8; const gw=(W-l-r)/groups.length;
+    [0,25,50,75,100].forEach(v => { const y = H-b-(H-b-t)*v/100; s.append(sv('line',{class:'grid-l',x1:l,x2:W-r,y1:y,y2:y})); s.append(sv('text',{x:l-6,y:y+4,'text-anchor':'end'},v+'%')); });
+    groups.forEach(([lab,min],i) => { ['V1','V2'].forEach((v,j) => { const rs = acts.filter(a=>a.v===v&&a.bat>=min), val=rate(rs); const h=(H-b-t)*val, w=gw*.28, x=l+i*gw+gw*.2+j*(w+6), y=H-b-h;
+      const rect = sv('rect',{x,y,width:w,height:h,rx:4,fill:v==='V1'?'var(--v1)':'var(--v2)'}); rect.addEventListener('mousemove',ev=>T.show(ev,[lab,`${v}: ${pct(val)} succeeded`,`${rs.length} actions`])); rect.addEventListener('mouseleave',T.hide); s.append(rect);
+      s.append(sv('text',{class:'lbl',x:x+w/2,y:y-6,'text-anchor':'middle'},pct(val))); }); s.append(sv('text',{x:l+i*gw+gw/2,y:H-10,'text-anchor':'middle'},lab)); });
+  }
+  // Drain lines
+  { const s = document.getElementById('ch-drain'), T = tipFor(s); const W=520,H=260,l=40,b=28,t=14,x0=110,x1=W-110; const Y=v=>H-b-(H-b-t)*v/100;
+    s.append(sv('rect',{x:x0,y:Y(30),width:x1-x0,height:Y(0)-Y(30),fill:'var(--bad)',opacity:.1})); s.append(sv('text',{x:(x0+x1)/2,y:Y(14),'text-anchor':'middle',fill:'var(--bad)'},'Danger zone: under 30%'));
+    [0,30,60,100].forEach(v => { s.append(sv('line',{class:'grid-l',x1:x0,x2:x1,y1:Y(v),y2:Y(v)})); s.append(sv('text',{x:x0-8,y:Y(v)+4,'text-anchor':'end'},v+'%')); });
+    s.append(sv('text',{class:'lbl',x:x0,y:H-6,'text-anchor':'middle'},'Start')); s.append(sv('text',{class:'lbl',x:x1,y:H-6,'text-anchor':'middle'},'End'));
+    MS.forEach(m => { const c = m.v==='V1'?'var(--v1)':'var(--v2)'; s.append(sv('line',{x1:x0,y1:Y(m.b0),x2:x1,y2:Y(m.b1),stroke:c,'stroke-width':2,opacity:.65,'stroke-linecap':'round'})); s.append(sv('circle',{cx:x1,cy:Y(m.b1),r:3.5,fill:c}));
+      const hit = sv('line',{x1:x0,y1:Y(m.b0),x2:x1,y2:Y(m.b1),stroke:'transparent','stroke-width':12}); hit.addEventListener('mousemove',ev=>T.show(ev,[`${m.id} · ${m.v}`,`${m.b0}% → ${m.b1}% in ${m.dur} min`,`${((m.b0-m.b1)/m.dur).toFixed(1)} pts per minute`])); hit.addEventListener('mouseleave',T.hide); s.append(hit); });
+  }
+  // Heat table: failure type x battery band
+  { const tb = document.getElementById('heat'); const cols=[['Under 30%',0,30],['30–60%',30,60],['60%+',60,101]]; const fails = acts.filter(a=>!a.ok); const types=[...new Set(fails.map(a=>a.fail))];
+    const sensor = new Set(['READING_UNRELIABLE','SENSOR_TIMEOUT','TARGET_NOT_DETECTED','SIGNAL_NOISE']);
+    types.sort((a,b)=> (sensor.has(b)-sensor.has(a)) || fails.filter(x=>x.fail===b).length - fails.filter(x=>x.fail===a).length);
+    const max = Math.max(...types.flatMap(ty => cols.map(([,lo,hi]) => fails.filter(a=>a.fail===ty&&a.bat>=lo&&a.bat<hi).length)));
+    tb.append(el('thead',{}, el('tr',{}, el('th',{text:'Failure type'}), cols.map(c=>el('th',{text:c[0]})))));
+    tb.append(el('tbody',{}, types.map(ty => el('tr',{}, el('td',{}, nice(ty), el('span',{style:'color:var(--muted);font-size:11px;margin-left:6px',text:sensor.has(ty)?'sensor':'navigation'})), cols.map(([,lo,hi]) => { const n = fails.filter(a=>a.fail===ty&&a.bat>=lo&&a.bat<hi).length; return el('td',{class:'num mono',style:`background:rgba(255,90,95,${n? .12 + .55*n/max : 0});color:${n?'var(--fg)':'var(--muted)'}`,text:n||'·'}); })))));
+  }
+  // Locations
+  { const s = document.getElementById('ch-loc'), T = tipFor(s); const W=520,H=300,p=28; const X=x=>p+x*(W-2*p)/100, Y=y=>H-p-y*(H-2*p)/100;
+    const by = {}; acts.forEach(a => { const o = by[a.loc] ||= {n:0,f:0}; o.n++; if(!a.ok) o.f++; });
+    s.append(sv('rect',{x:4,y:4,width:W-8,height:H-8,rx:8,fill:'none',stroke:'var(--line-2)','stroke-dasharray':'4 4'}));
+    const ranked = D.locations.slice().sort((a,b)=> by[b.id].f/by[b.id].n - by[a.id].f/by[a.id].n);
+    D.locations.slice().sort((a,b)=>by[b.id].n-by[a.id].n).forEach(l => { const o=by[l.id], fr=o.f/o.n, r=4+Math.sqrt(o.n)*2.6;
+      const c = sv('circle',{cx:X(l.x),cy:Y(l.y),r,fill:'var(--bad)','fill-opacity':.08+Math.min(1,fr/.4)*.8,stroke:'var(--bad)','stroke-width':1.2}); c.addEventListener('mousemove',ev=>T.show(ev,[`${l.id} · ${l.name}`,`${o.f} of ${o.n} actions failed (${pct(fr)})`,nice(l.env)])); c.addEventListener('mouseleave',T.hide); s.append(c); });
+    ranked.slice(0,3).forEach((l,k) => { const o=by[l.id], r=4+Math.sqrt(o.n)*2.6, right = k === 0 ? false : l.x < 70; s.append(sv('text',{class:'lbl',x:X(l.x)+(right?r+6:-r-6),y:Y(l.y)+4,'text-anchor':right?'start':'end'},`${l.name} · ${pct(o.f/o.n)} fail`)); });
+  }
+  // Action types
+  { const s = document.getElementById('ch-type'); const types=[...new Set(acts.map(a=>a.type))].map(t=>({t,v:rate(acts.filter(a=>a.type===t)),n:acts.filter(a=>a.type===t).length})).sort((a,b)=>a.v-b.v); const l=150,W=520,rw=W-l-50;
+    types.forEach((o,i) => { const y=14+i*38; s.append(sv('text',{x:l-10,y:y+13,'text-anchor':'end'},nice(o.t))); s.append(sv('rect',{x:l,y,width:rw,height:18,rx:4,fill:'var(--panel-2)'})); s.append(sv('rect',{x:l,y,width:rw*o.v,height:18,rx:4,fill:i===0?'var(--bad)':'var(--line-2)'})); s.append(sv('text',{class:'lbl',x:l+rw+8,y:y+13},pct(o.v))); });
+  }
+}
+
+/* ---------- Boot ---------- */
+drawBase();
+cur = MS.find(m => m.id === 'M014');
+renderQueue();
+load('M014', true);
+})();
+</script>
