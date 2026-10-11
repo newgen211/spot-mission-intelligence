@@ -1,0 +1,647 @@
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+   padding: 16px;
+   background: light-dark(#e8eef3, #09141c);
+}
+
+#spot-click-through {
+  max-width: 1200px;
+   margin: 0 auto;
+}
+
+@media (max-width: 680px) {
+  body {
+  padding: 0;
+}
+
+
+}
+
+#spot-click-through {
+  --sp-bg:light-dark(#f4f7fa,#101d28);
+  --sp-panel:light-dark(#ffffff,#192b39);
+  --sp-ink:light-dark(#152a3b,#e9f1f5);
+  --sp-muted:light-dark(#5d6f7d,#afc0cd);
+  --sp-line:light-dark(#dce4ea,#354956);
+  --sp-teal:light-dark(#087f83,#61d2ce);
+  --sp-soft:light-dark(#e9f5f4,#1b4146);
+  --sp-amber:light-dark(#8a5800,#ffd28a);
+  --sp-warn:light-dark(#fff4d8,#483a23);
+  background:var(--sp-bg);
+  color:var(--sp-ink);
+  font:14px/1.5 Arial,sans-serif;
+  border-radius:14px;
+  overflow:hidden
+}
+
+#spot-click-through * {
+  box-sizing:border-box
+}
+
+#spot-click-through [hidden] {
+  display:none!important
+}
+
+#spot-click-through h1,#spot-click-through h2,#spot-click-through h3,#spot-click-through p {
+  margin:0
+}
+
+#spot-click-through h1 {
+  font-size:25px;
+  font-weight:500
+}
+
+#spot-click-through h2 {
+  font-size:18px;
+  font-weight:500
+}
+
+#spot-click-through h3 {
+  font-size:16px;
+  font-weight:500
+}
+
+#spot-click-through button,#spot-click-through select {
+  font:inherit;
+  color:inherit
+}
+
+#spot-click-through button {
+  min-height:44px;
+  border:1px solid var(--sp-line);
+  background:var(--sp-panel);
+  border-radius:8px;
+  padding:8px 14px
+}
+
+#spot-click-through button:hover {
+  background:var(--sp-soft)
+}
+
+#spot-click-through .sp-chrome {
+  padding:18px 24px;
+  background:var(--sp-panel);
+  border-bottom:1px solid var(--sp-line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap
+}
+
+#spot-click-through .sp-brand {
+  display:flex;
+  align-items:center;
+  gap:10px
+}
+
+#spot-click-through .sp-logo {
+  background:var(--sp-teal);
+  color:light-dark(#fff,#10272b);
+  border-radius:8px;
+  padding:5px 12px;
+  font-size:22px
+}
+
+#spot-click-through .sp-muted {
+  color:var(--sp-muted)
+}
+
+#spot-click-through .sp-small {
+  font-size:12px
+}
+
+#spot-click-through .sp-nav {
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px
+}
+
+#spot-click-through .sp-nav button {
+  border-color:transparent;
+  background:transparent
+}
+
+#spot-click-through .sp-nav button[aria-pressed=true] {
+  color:var(--sp-teal);
+  background:var(--sp-soft)
+}
+
+#spot-click-through .sp-main {
+  padding:24px;
+  display:grid;
+  gap:18px
+}
+
+#spot-click-through .sp-title {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap
+}
+
+#spot-click-through .sp-badge {
+  display:inline-flex;
+  padding:4px 10px;
+  border-radius:20px;
+  font-size:12px;
+  color:var(--sp-muted);
+  background:var(--sp-bg)
+}
+
+#spot-click-through .sp-warn {
+  background:var(--sp-warn);
+  color:var(--sp-amber)
+}
+
+#spot-click-through .sp-panel {
+  padding:20px;
+  background:var(--sp-panel);
+  border:1px solid var(--sp-line);
+  border-radius:12px;
+  min-width:0
+}
+
+#spot-click-through .sp-stack {
+  display:grid;
+  gap:18px
+}
+
+#spot-click-through .sp-top {
+  display:grid;
+  grid-template-columns:minmax(0,2.3fr) minmax(230px,1fr);
+  gap:18px
+}
+
+#spot-click-through .sp-head {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:14px;
+  flex-wrap:wrap
+}
+
+#spot-click-through .sp-video {
+  background:light-dark(#132e40,#102330);
+  color:#f1f7fa;
+  border-radius:10px;
+  min-height:185px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:24px
+}
+
+#spot-click-through .sp-video button {
+  background:#f1f7fa;
+  color:#087f83;
+  border:0;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:12px
+}
+
+#spot-click-through .sp-video p {
+  color:#b6c9d5
+}
+
+#spot-click-through .sp-value {
+  font-size:32px;
+  font-weight:500;
+  font-variant-numeric:tabular-nums
+}
+
+#spot-click-through .sp-status {
+  display:grid;
+  gap:13px
+}
+
+#spot-click-through .sp-separator {
+  border:0;
+  border-top:1px solid var(--sp-line);
+  margin:2px 0
+}
+
+#spot-click-through .sp-stats {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px
+}
+
+#spot-click-through .sp-stat {
+  text-align:left!important;
+  padding:12px!important;
+  border:0!important;
+  background:transparent!important;
+  display:grid;
+  gap:4px;
+  align-content:start
+}
+
+#spot-click-through .sp-stat:hover {
+  background:var(--sp-soft)!important
+}
+
+#spot-click-through .sp-stat .sp-small {
+  color:var(--sp-muted)
+}
+
+#spot-click-through .sp-map-layout {
+  display:grid;
+  grid-template-columns:minmax(0,1.8fr) minmax(230px,1fr);
+  gap:20px
+}
+
+#spot-click-through .sp-map {
+  background:var(--sp-bg);
+  border-radius:10px;
+  padding:20px;
+  display:grid;
+  align-content:center;
+  gap:20px;
+  min-height:250px
+}
+
+#spot-click-through .sp-point-grid {
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px
+}
+
+#spot-click-through .sp-point-grid button {
+  padding:8px 4px;
+  font-size:12px;
+  min-width:0
+}
+
+#spot-click-through .sp-point-grid button[aria-pressed=true],#spot-click-through .sp-mission[aria-pressed=true] {
+  border-color:var(--sp-teal);
+  background:var(--sp-soft);
+  color:var(--sp-teal)
+}
+
+#spot-click-through .sp-detail {
+  display:grid;
+  gap:12px;
+  align-content:start
+}
+
+#spot-click-through dl {
+  margin:0;
+  display:grid;
+  gap:14px
+}
+
+#spot-click-through dt {
+  font-size:11px;
+  color:var(--sp-muted);
+  letter-spacing:.06em;
+  text-transform:uppercase
+}
+
+#spot-click-through dd {
+  margin:2px 0 0;
+  font-size:15px;
+  overflow-wrap:anywhere
+}
+
+#spot-click-through .sp-primary {
+  background:var(--sp-teal);
+  color:light-dark(#fff,#10272b);
+  border-color:transparent
+}
+
+#spot-click-through .sp-primary:hover {
+  background:var(--sp-teal);
+  opacity:.9
+}
+
+#spot-click-through .sp-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px
+}
+
+#spot-click-through .sp-list {
+  display:grid;
+  gap:10px
+}
+
+#spot-click-through .sp-mission {
+  text-align:left;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+  width:100%;
+  flex-wrap:wrap
+}
+
+#spot-click-through .sp-table-wrap {
+  overflow-x:auto
+}
+
+#spot-click-through table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px
+}
+
+#spot-click-through th {
+  text-align:left;
+  font-weight:500;
+  color:var(--sp-muted)
+}
+
+#spot-click-through td,#spot-click-through th {
+  padding:10px 8px;
+  border-bottom:1px solid var(--sp-line);
+  vertical-align:top
+}
+
+#spot-click-through td button {
+  min-height:36px;
+  padding:4px 8px;
+  font-size:12px
+}
+
+#spot-click-through .sp-controls {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap
+}
+
+#spot-click-through select {
+  max-width:100%;
+  padding:10px;
+  border:1px solid var(--sp-line);
+  background:var(--sp-panel);
+  border-radius:8px
+}
+
+#spot-click-through .sp-demo-stage {
+  background:var(--sp-bg);
+  padding:24px;
+  border-radius:10px;
+  display:grid;
+  gap:12px;
+  margin:16px 0
+}
+
+#spot-click-through .sp-footer {
+  font-size:12px;
+  color:var(--sp-muted);
+  padding-top:2px
+}
+
+@media(max-width:680px) {
+  #spot-click-through .sp-main {
+  padding:16px
+}
+
+#spot-click-through .sp-chrome {
+  padding:16px
+}
+
+#spot-click-through .sp-top,#spot-click-through .sp-map-layout {
+  grid-template-columns:1fr
+}
+
+#spot-click-through .sp-stats {
+  grid-template-columns:1fr
+}
+
+#spot-click-through .sp-stat {
+  border-bottom:1px solid var(--sp-line)!important;
+  grid-template-columns:110px 1fr;
+  align-items:center
+}
+
+#spot-click-through .sp-stat .sp-small {
+  grid-column:2
+}
+
+#spot-click-through .sp-value {
+  font-size:27px
+}
+
+#spot-click-through .sp-point-grid {
+  grid-template-columns:repeat(3,minmax(0,1fr))
+}
+
+#spot-click-through .sp-panel {
+  padding:16px
+}
+
+#spot-click-through .sp-nav {
+  width:100%;
+  justify-content:space-between
+}
+
+#spot-click-through .sp-nav button {
+  padding:6px 9px;
+  font-size:13px
+}
+
+
+}
+
+/* Uploaded fictional floor plan and mission-aware waypoint controls. */
+#spot-click-through .sp-map-layout {
+  grid-template-columns: minmax(0, 2.4fr) minmax(240px, 1fr);
+}
+
+#spot-click-through .sp-map {
+  padding: 14px;
+   gap: 12px;
+   align-content: start;
+}
+
+#spot-click-through .sp-map-toolbar {
+  display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 8px;
+}
+
+#spot-click-through .sp-head .sp-controls {
+  max-width: 100%;
+}
+
+#spot-click-through #sp-map-mission {
+  width: 260px;
+   max-width: 100%;
+}
+
+#spot-click-through .sp-map-toolbar button[aria-pressed="true"] {
+  background: var(--sp-soft);
+   color: var(--sp-teal);
+   border-color: var(--sp-teal);
+}
+
+#spot-click-through .sp-floor-viewport {
+  position: relative;
+   width: 100%;
+   aspect-ratio: 1095 / 595;
+   overflow: hidden;
+   border-radius: 8px;
+   background: var(--sp-panel);
+}
+
+#spot-click-through .sp-floor-scene {
+  position: absolute;
+   width: 100%;
+   top: 0;
+   left: 0;
+   aspect-ratio: 1095 / 595;
+}
+
+#spot-click-through .sp-floor-image {
+  display: block;
+   width: 100%;
+   height: auto;
+}
+
+#spot-click-through .sp-floor-viewport[data-floor="1"] {
+  aspect-ratio: 753 / 595;
+}
+
+#spot-click-through .sp-floor-viewport[data-floor="1"] .sp-floor-scene {
+  width: 145.4183%;
+}
+
+#spot-click-through .sp-floor-viewport[data-floor="2"] {
+  aspect-ratio: 342 / 595;
+   max-width: 300px;
+   margin: 0 auto;
+}
+
+#spot-click-through .sp-floor-viewport[data-floor="2"] .sp-floor-scene {
+  width: 320.1754%;
+   left: -220.1754%;
+}
+
+#spot-click-through button.sp-map-hit {
+  position: absolute;
+   width: 4.02%;
+   aspect-ratio: 1;
+   min-height: 0;
+   padding: 0;
+   border: 2px solid transparent;
+   border-radius: 50%;
+   transform: translate(-50%, -50%);
+   background: transparent;
+}
+
+#spot-click-through button.sp-map-hit:hover {
+  background: rgb(255 255 255 / .18);
+}
+
+#spot-click-through button.sp-map-hit[data-state="review"] {
+  border-color: light-dark(#f4b426,#ffd28a);
+}
+
+#spot-click-through button.sp-map-hit[data-state="missed"] {
+  border-color: light-dark(#e13c36,#ff9c9c);
+}
+
+#spot-click-through button.sp-map-hit[data-state="visited"] {
+  border-color: light-dark(#00a98f,#61d2ce);
+}
+
+#spot-click-through button.sp-map-hit[aria-pressed="true"] {
+  box-shadow: 0 0 0 3px light-dark(#fff,#11232c), 0 0 0 5px var(--sp-teal);
+}
+
+#spot-click-through .sp-point-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+   gap: 8px;
+}
+
+#spot-click-through .sp-point-grid button {
+  display: grid;
+   gap: 2px;
+   font-size: 13px;
+}
+
+#spot-click-through .sp-point-grid button small {
+  color: var(--sp-muted);
+   font-size: 11px;
+}
+
+#spot-click-through .sp-point-grid button[data-state="review"] small {
+  color: var(--sp-amber);
+}
+
+#spot-click-through .sp-point-grid button[data-state="missed"] small {
+  color: light-dark(#ad2828,#ff9c9c);
+}
+
+#spot-click-through .sp-map-legend {
+  display: flex;
+   flex-wrap: wrap;
+   gap: 8px 16px;
+   font-size: 12px;
+   color: var(--sp-muted);
+}
+
+#spot-click-through .sp-map-legend span {
+  display: inline-flex;
+   align-items: center;
+   gap: 6px;
+}
+
+#spot-click-through .sp-map-dot {
+  width: 8px;
+   height: 8px;
+   border-radius: 50%;
+   background: var(--sp-line);
+}
+
+#spot-click-through .sp-map-dot[data-state="visited"] {
+  background: light-dark(#00a98f,#61d2ce);
+}
+
+#spot-click-through .sp-map-dot[data-state="review"] {
+  background: light-dark(#f4b426,#ffd28a);
+}
+
+#spot-click-through .sp-map-dot[data-state="missed"] {
+  background: light-dark(#e13c36,#ff9c9c);
+}
+
+#spot-click-through .sp-step-picker {
+  display: grid;
+   gap: 6px;
+   font-size: 13px;
+}
+
+#spot-click-through .sp-step-picker select {
+  width: 100%;
+   min-width: 0;
+}
+
+@media (max-width: 760px) {
+  #spot-click-through .sp-map-layout {
+  grid-template-columns: 1fr;
+}
+
+
+}
+
+@media (max-width: 480px) {
+  #spot-click-through .sp-point-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+
+}

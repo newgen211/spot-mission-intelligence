@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPOT Inspection Dashboard — Click-through Prototype</title>
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="spot-click-through">
+  <!-- Dashboard layout and responsive styles -->
+  
+  <header class="sp-chrome">
+<div class="sp-brand">
+<span class="sp-logo">S</span>
+<div>
+<h3>SPOT</h3>
+<p class="sp-small sp-muted">Inspection dashboard</p>
+</div>
+</div>
+<nav class="sp-nav" aria-label="Dashboard views">
+<button class="cursor-interaction" data-view="overview" aria-pressed="true">Overview</button>
+<button class="cursor-interaction" data-view="missions" aria-pressed="false">Missions</button>
+<button class="cursor-interaction" data-view="demo" aria-pressed="false">Live demo</button>
+<button class="cursor-interaction" data-view="results" aria-pressed="false">Results</button>
+</nav>
+</header>
+  <main class="sp-main">
+    <div class="sp-title">
+<div>
+<h1 id="sp-page-title">Spot, at a glance</h1>
+<p class="sp-muted">Mission progress and what needs attention.</p>
+</div>
+<span class="sp-badge">Prototype · Sample Sep 1–10, 2026</span>
+</div>
+    <section data-screen="overview" class="sp-stack">
+      <div class="sp-top">
+<section class="sp-panel">
+<div class="sp-head">
+<h2>Live demo</h2>
+<span class="sp-badge">Mission walkthrough</span>
+</div>
+<div class="sp-video">
+<div>
+<button class="cursor-interaction" id="sp-open-demo">
+<span aria-hidden="true">▶</span>Open demo</button>
+<h3>Watch Spot's inspection steps</h3>
+<p class="sp-small">Interactive sample replay · No video connected</p>
+</div>
+</div>
+</section>
+<section class="sp-panel sp-status">
+<h2>Robot status</h2>
+<div>
+<span class="sp-badge">Not connected</span>
+</div>
+<div>
+<p class="sp-muted">Battery level</p>
+<div class="sp-value">— %</div>
+</div>
+<hr class="sp-separator">
+<p class="sp-small sp-muted">Location: Awaiting live data<br>Last update: No live update</p>
+</section>
+</div>
+      <section class="sp-panel">
+<div class="sp-head">
+<div>
+<h2>Overview</h2>
+<p class="sp-muted">What did Spot complete during this period?</p>
+</div>
+<span class="sp-badge">Sample mission data</span>
+</div>
+<div class="sp-stats">
+<button class="sp-stat cursor-interaction" data-go="missions">
+<span class="sp-value">26 / 27</span>
+<span>Missions completed</span>
+<span class="sp-small">A finished route may still miss readings.</span>
+</button>
+<button class="sp-stat cursor-interaction" data-go="results" data-filter="failed">
+<span class="sp-value">221 / 270</span>
+<span>Inspection steps successful</span>
+<span class="sp-small">49 steps were unsuccessful.</span>
+</button>
+<button class="sp-stat cursor-interaction" data-go="results" data-filter="review">
+<span class="sp-value">40</span>
+<span>Anomaly flags</span>
+<span class="sp-small">15 flags require review.</span>
+</button>
+</div>
+</section>
+      <section class="sp-panel">
+  <div class="sp-head">
+    <div>
+<h2>Mission waypoint map</h2>
+<p class="sp-muted">Click a pin or waypoint to see its inspection details.</p>
+</div>
+    <label class="sp-controls">Mission <select id="sp-map-mission" aria-label="Mission shown on the floor plan">
+</select>
+</label>
+  </div>
+  <div class="sp-map-layout">
+    <div class="sp-map">
+      <div class="sp-map-toolbar" aria-label="Floor selection">
+        <button class="cursor-interaction" data-floor="all" aria-pressed="true" aria-controls="sp-floor-viewport">Both floors</button>
+        <button class="cursor-interaction" data-floor="1" aria-pressed="false" aria-controls="sp-floor-viewport">Floor 1</button>
+        <button class="cursor-interaction" data-floor="2" aria-pressed="false" aria-controls="sp-floor-viewport">Floor 2</button>
+      </div>
+      <div class="sp-floor-viewport" id="sp-floor-viewport" data-floor="all">
+        <div class="sp-floor-scene">
+          <img class="sp-floor-image" id="sp-floor-image" src="fictional_floor_plan.png" alt="Fictional industrial floor plan. Floor 1 contains WP01 through WP10; Floor 2 contains WP11 through WP15." width="1095" height="595">
+          <div id="sp-map-hotspots">
+</div>
+        </div>
+      </div>
+      <div class="sp-map-legend" aria-label="Waypoint outline status for selected mission">
+        <span>
+<i class="sp-map-dot" data-state="visited" aria-hidden="true">
+</i>Successful steps</span>
+        <span>
+<i class="sp-map-dot" data-state="review" aria-hidden="true">
+</i>Needs review</span>
+        <span>
+<i class="sp-map-dot" data-state="missed" aria-hidden="true">
+</i>Missed step</span>
+        <span>
+<i class="sp-map-dot" aria-hidden="true">
+</i>Not in mission</span>
+      </div>
+      <div id="sp-point-grid" class="sp-point-grid" aria-label="Waypoints on the floor plan">
+</div>
+      <p class="sp-small sp-muted" id="sp-map-caption">
+</p>
+      <p class="sp-small sp-muted">Fictional floor plan · Outlines show mission status. Pin colors belong to the supplied illustration.</p>
+    </div>
+    <div class="sp-detail" id="sp-waypoint-detail" aria-live="polite">
+</div>
+  </div>
+</section>
+
+    </section>
+    <section data-screen="missions" hidden class="sp-stack">
+<section class="sp-panel">
+<div class="sp-head">
+<h2>Mission history</h2>
+<span class="sp-badge">27 sample missions</span>
+</div>
+<div class="sp-list" id="sp-mission-list">
+</div>
+</section>
+</section>
+    <section data-screen="demo" hidden class="sp-stack">
+<section class="sp-panel">
+<div class="sp-head">
+<div>
+<h2>Mission walkthrough</h2>
+<p class="sp-muted">Step through recorded sample events.</p>
+</div>
+<span class="sp-badge">Simulation · No live connection</span>
+</div>
+<label class="sp-controls">Mission <select id="sp-demo-mission" aria-label="Replay mission">
+</select>
+</label>
+<div class="sp-demo-stage" id="sp-demo-stage" aria-live="polite">
+</div>
+<div class="sp-actions">
+<button class="cursor-interaction" id="sp-prev">Previous step</button>
+<button class="sp-primary cursor-interaction" id="sp-next">Next step</button>
+<button class="cursor-interaction" id="sp-demo-results">View mission results</button>
+</div>
+</section>
+</section>
+    <section data-screen="results" hidden class="sp-stack">
+<section class="sp-panel">
+<div class="sp-head">
+<div>
+<h2>Inspection results</h2>
+<p class="sp-muted" id="sp-results-scope">All sample missions</p>
+</div>
+<button id="sp-all-results" class="cursor-interaction">All missions</button>
+</div>
+<div class="sp-actions" id="sp-result-filters">
+<button class="cursor-interaction" data-filter="review" aria-pressed="true">Needs review</button>
+<button class="cursor-interaction" data-filter="failed" aria-pressed="false">Missed steps</button>
+<button class="cursor-interaction" data-filter="readings" aria-pressed="false">Flagged readings</button>
+</div>
+<div id="sp-result-content" class="sp-table-wrap" aria-live="polite">
+</div>
+<div id="sp-selected-result" class="sp-detail" aria-live="polite">
+</div>
+</section>
+</section>
+    <footer class="sp-footer">Click-through prototype · Sample records from your reference dashboard. Timestamps have no supplied timezone.</footer>
+  </main>
+  <!-- Sample records are stored separately in sample-data.js -->
+  <script src="sample-data.js">
+</script>
+  <!-- Navigation, mission selection, filters, and replay interactions -->
+  <script src="app.js">
+</script>
+</div>
+</body>
+</html>
